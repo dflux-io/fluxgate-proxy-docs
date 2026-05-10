@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Islands palette — black canvas with floating panels, blue accent.
+ * ------------------------------------------------------------------------ */
+
+:root,
+[data-theme='dark'] {
+  --surface: 10 10 11;          /* #0a0a0b */
+  --surface-muted: 19 18 23;    /* #131217 */
+  --surface-subtle: 26 26 31;   /* #1a1a1f */
+  --surface-border: 42 42 48;   /* #2a2a30 */
+  --ink: 237 237 240;
+  --ink-muted: 161 161 170;
+  --ink-subtle: 113 113 122;
+  --accent: 59 130 246;         /* blue-500 */
+  --accent-fg: 255 255 255;
+}
+
+[data-theme='light'] {
+  --surface: 255 255 255;
+  --surface-muted: 250 250 250;
+  --surface-subtle: 244 244 245;
+  --surface-border: 228 228 231;
+  --ink: 24 24 27;
+  --ink-muted: 82 82 91;
+  --ink-subtle: 161 161 170;
+  --accent: 37 99 235;          /* blue-600 */
+  --accent-fg: 255 255 255;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  font-family:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Floating-panel glow — only visible against the dark canvas. */
+[data-theme='dark'] .panel-glow {
+  box-shadow:
+    inset 1px 1px 0 0 rgb(255 255 255 / 0.04),
+    inset -1px -1px 0 0 rgb(0 0 0 / 0.2);
+}
+
+/* ---------------------------------------------------------------------------
+ * highlight.js theme — homegrown so it tracks the dark/light toggle.
+ * ------------------------------------------------------------------------ */
+
+.hljs { color: rgb(var(--ink)); background: transparent; }
+.hljs-comment, .hljs-quote { color: rgb(var(--ink-subtle)); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-section, .hljs-doctag, .hljs-name, .hljs-strong { color: #c678dd; }
+[data-theme='light'] .hljs-keyword, [data-theme='light'] .hljs-selector-tag, [data-theme='light'] .hljs-section, [data-theme='light'] .hljs-doctag, [data-theme='light'] .hljs-name, [data-theme='light'] .hljs-strong { color: #a626a4; }
+.hljs-string, .hljs-attr, .hljs-symbol, .hljs-bullet, .hljs-addition { color: #98c379; }
+[data-theme='light'] .hljs-string, [data-theme='light'] .hljs-attr, [data-theme='light'] .hljs-symbol, [data-theme='light'] .hljs-bullet, [data-theme='light'] .hljs-addition { color: #50a14f; }
+.hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable, .hljs-tag .hljs-attr { color: #d19a66; }
+[data-theme='light'] .hljs-number, [data-theme='light'] .hljs-literal, [data-theme='light'] .hljs-variable, [data-theme='light'] .hljs-template-variable, [data-theme='light'] .hljs-tag .hljs-attr { color: #986801; }
+.hljs-title, .hljs-built_in, .hljs-class .hljs-title { color: #61afef; }
+[data-theme='light'] .hljs-title, [data-theme='light'] .hljs-built_in, [data-theme='light'] .hljs-class .hljs-title { color: #4078f2; }
+.hljs-meta, .hljs-link, .hljs-regexp, .hljs-deletion { color: #e06c75; }
+[data-theme='light'] .hljs-meta, [data-theme='light'] .hljs-link, [data-theme='light'] .hljs-regexp, [data-theme='light'] .hljs-deletion { color: #e45649; }
+.hljs-emphasis { font-style: italic; }
+
+/* ---------------------------------------------------------------------------
+ * Heading anchors — appear on hover.
+ * ------------------------------------------------------------------------ */
+
+.heading-anchor {
+  margin-left: 0.4rem;
+  color: rgb(var(--ink-subtle));
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor { opacity: 1; }
+.heading-anchor:hover { color: rgb(var(--accent)); }
+
+/* ---------------------------------------------------------------------------
+ * Smooth scroll + sticky-header offset for in-page anchors.
+ * ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+:target { scroll-margin-top: 5rem; }
+
+/* ---------------------------------------------------------------------------
+ * Subtle scrollbar on dark.
+ * ------------------------------------------------------------------------ */
+
+[data-theme='dark'] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--surface-border)) transparent;
+}
+[data-theme='dark'] ::-webkit-scrollbar { width: 8px; height: 8px; }
+[data-theme='dark'] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgb(var(--surface-border));
+  border-radius: 4px;
+}
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: rgb(var(--ink-subtle)); }
