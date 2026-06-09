@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#0a0a0a"/>
+  <rect x="0" y="0" width="1200" height="630" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d2a5e" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#0a0a0a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="logo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Logo + project name top-left -->
+  <g transform="translate(72, 96)">
+    <rect width="56" height="56" rx="12" fill="#0070f3"/>
+    <rect width="56" height="56" rx="12" fill="url(#logo)"/>
+    <text x="76" y="38" font-family="ui-sans-serif, system-ui, -apple-system, Geist, sans-serif" font-size="28" font-weight="600" fill="#ededed">fluxgate-proxy</text>
+    <text x="76" y="68" font-family="ui-sans-serif, system-ui, -apple-system, Geist, sans-serif" font-size="16" fill="#a1a1a1">docs</text>
+  </g>
+
+  <!-- Hero copy -->
+  <g transform="translate(72, 280)">
+    <text x="0" y="0" font-family="ui-sans-serif, system-ui, -apple-system, Geist, sans-serif" font-size="14" font-weight="600" letter-spacing="3" fill="#3491ff">5G SBI &amp; 4G DIAMETER SIGNALING PROXY</text>
+    <text x="0" y="80" font-family="ui-sans-serif, system-ui, -apple-system, Geist, sans-serif" font-size="64" font-weight="600" fill="#ededed">One proxy.</text>
+    <text x="0" y="160" font-family="ui-sans-serif, system-ui, -apple-system, Geist, sans-serif" font-size="64" font-weight="600" fill="#ededed">Both planes.</text>
+    <text x="0" y="220" font-family="ui-sans-serif, system-ui, -apple-system, Geist, sans-serif" font-size="22" fill="#a1a1a1">Policy · transformation · routing · rate limiting — at wire speed</text>
+  </g>
+</svg>

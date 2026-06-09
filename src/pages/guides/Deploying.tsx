@@ -151,7 +151,7 @@ CMD ["-config", "/etc/fgp/fgp.yaml", "-json"]`} />
         The CLI overlay layer accepts a handful of flags that override the loaded config —
         useful for one-off invocations (debugging, print-config). Precedence is:
       </p>
-      <pre><code>defaults &lt; YAML/JSON config file &lt; env interpolation &lt; CLI flags</code></pre>
+      <CodeBlock code={`defaults < YAML/JSON config file < env interpolation < CLI flags`} />
       <p>
         The flags that overlay are documented in <Link to="/reference/fgp-cli">fgp CLI</Link>.
       </p>

@@ -1,0 +1,210 @@
+{
+  "generatedAt": "2026-06-09",
+  "total": 21,
+  "byGroup": {
+    "proxy": 12,
+    "diameter": 9
+  },
+  "byType": {
+    "gauge": 6,
+    "counter": 12,
+    "histogram": 3
+  },
+  "metrics": [
+    {
+      "name": "fgp_active_requests",
+      "type": "gauge",
+      "help": "Number of requests currently being processed.",
+      "labels": [],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_circuit_breaker_open",
+      "type": "gauge",
+      "help": "Whether the circuit breaker is open (1) or closed (0).",
+      "labels": [
+        "nf_type",
+        "producer"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_diameter_active_peers",
+      "type": "gauge",
+      "help": "Number of currently-open Diameter peer connections.",
+      "labels": [],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_avp_type_mismatch_total",
+      "type": "counter",
+      "help": "Diameter AVPs whose decoded wire type does not match the dictionary.",
+      "labels": [
+        "app",
+        "code"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_avp_unknown_total",
+      "type": "counter",
+      "help": "Diameter AVPs whose (app, code, vendor) tuple is not in the loaded dictionary.",
+      "labels": [
+        "app",
+        "code",
+        "vendor"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_dictionary_avp_count",
+      "type": "gauge",
+      "help": "Number of AVPs loaded in the dictionary, per application id.",
+      "labels": [
+        "app"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_dictionary_reload_total",
+      "type": "counter",
+      "help": "Diameter dictionary reload outcomes.",
+      "labels": [
+        "result"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_forward_duration_seconds",
+      "type": "histogram",
+      "help": "Wall-clock latency of Diameter relay forward attempts, by result.",
+      "labels": [
+        "result"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_forward_total",
+      "type": "counter",
+      "help": "Diameter relay forward outcomes by result.",
+      "labels": [
+        "result"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_loop_detected_total",
+      "type": "counter",
+      "help": "Diameter loop-detection events (RFC 6733 §6.1.8) by direction.",
+      "labels": [
+        "direction"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_diameter_requests_total",
+      "type": "counter",
+      "help": "Total Diameter requests handled by the relay, by Application-Id, Command-Code and observed Result-Code.",
+      "labels": [
+        "application",
+        "command",
+        "result_code"
+      ],
+      "group": "diameter"
+    },
+    {
+      "name": "fgp_errors_total",
+      "type": "counter",
+      "help": "Total number of errors by category.",
+      "labels": [
+        "category"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_filter_chain_length",
+      "type": "gauge",
+      "help": "Number of filters in the active request/response chain.",
+      "labels": [
+        "phase"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_filter_decisions_total",
+      "type": "counter",
+      "help": "Total number of filter decisions.",
+      "labels": [
+        "filter",
+        "decision"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_filter_duration_seconds",
+      "type": "histogram",
+      "help": "Per-filter execution duration in seconds.",
+      "labels": [
+        "filter",
+        "phase",
+        "protocol"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_policy_reload_errors_total",
+      "type": "counter",
+      "help": "Number of failed policy reload attempts.",
+      "labels": [],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_producer_requests_total",
+      "type": "counter",
+      "help": "Total requests forwarded to producers.",
+      "labels": [
+        "nf_type",
+        "producer",
+        "result"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_rate_limit_exceeded_total",
+      "type": "counter",
+      "help": "Number of requests rejected by rate limiting.",
+      "labels": [
+        "rule"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_request_duration_seconds",
+      "type": "histogram",
+      "help": "Request duration in seconds.",
+      "labels": [
+        "method",
+        "target_nf_type"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_requests_total",
+      "type": "counter",
+      "help": "Total number of requests processed by FGP.",
+      "labels": [
+        "method",
+        "target_nf_type",
+        "status_code"
+      ],
+      "group": "proxy"
+    },
+    {
+      "name": "fgp_sync_lag_seconds",
+      "type": "gauge",
+      "help": "Seconds since last successful policy sync from database.",
+      "labels": [],
+      "group": "proxy"
+    }
+  ]
+}

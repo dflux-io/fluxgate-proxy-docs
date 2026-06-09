@@ -1,17 +1,54 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { manifest } from '../manifest';
 import TopBar from './TopBar';
 import SiteNav from './SiteNav';
+import SearchModal from './SearchModal';
 
 export default function Layout() {
   const [navOpen, setNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const location = useLocation();
+
+  // Close the search modal on every route change so navigating to a
+  // result actually dismisses the overlay (the modal calls navigate +
+  // onClose, but the route change can come from anywhere else too).
+  useEffect(() => {
+    setSearchOpen(false);
+  }, [location.pathname]);
+
+  // Global Cmd+K / Ctrl+K opens search; / also works (matches GitHub,
+  // Stripe, Notion, etc. — easy on keyboards without a meta key).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      } else if (e.key === '/' && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   return (
     <div className="flex min-h-screen flex-col bg-surface text-ink">
       <TopBar
         projectName={manifest.projectName}
         onToggleNav={() => setNavOpen((v) => !v)}
+        onOpenSearch={openSearch}
       />
 
       <div className="mx-auto flex w-full max-w-[88rem] flex-1">
@@ -36,6 +73,8 @@ export default function Layout() {
 
         <Outlet />
       </div>
+
+      <SearchModal open={searchOpen} onClose={closeSearch} />
     </div>
   );
 }

@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-06-09",
+  "name": "fgp",
+  "tagline": "Fluxgate Proxy: 5G SBI / Diameter security and routing proxy",
+  "usage": [],
+  "sections": [
+    {
+      "title": "Server Options",
+      "items": [
+        {
+          "syntax": "-addr <addr>",
+          "desc": "Listen address for the SBI proxy (default: :8090)"
+        },
+        {
+          "syntax": "-config <file>",
+          "desc": "Path to YAML or JSON config file"
+        },
+        {
+          "syntax": "-print-config",
+          "desc": "Load + overlay + print resolved (redacted) config, exit 0"
+        },
+        {
+          "syntax": "-print-config-format",
+          "desc": "Output format for -print-config: yaml (default) or json"
+        },
+        {
+          "syntax": "-redirect",
+          "desc": "Redirect mode: 307 redirect to producer instead of proxying"
+        },
+        {
+          "syntax": "-web",
+          "desc": "Enable the React management panel on the admin listener"
+        },
+        {
+          "syntax": "-web-frontend-dir <dir>",
+          "desc": "Serve the web UI from this directory instead of the embedded build (dev)"
+        },
+        {
+          "syntax": "-v, -version",
+          "desc": "Print version and exit"
+        }
+      ]
+    },
+    {
+      "title": "Database Options",
+      "items": [
+        {
+          "syntax": "-db-driver <name>",
+          "desc": "Control-plane DB driver: sqlite | postgres (default: sqlite)"
+        },
+        {
+          "syntax": "-db-dsn <dsn>",
+          "desc": "Control-plane DB connection string"
+        },
+        {
+          "syntax": "-db-query-log",
+          "desc": "Log every SQL query (debug; warn for slow >200ms)"
+        }
+      ]
+    },
+    {
+      "title": "Logging Options",
+      "items": [
+        {
+          "syntax": "-debug",
+          "desc": "Enable debug logging"
+        },
+        {
+          "syntax": "-trace",
+          "desc": "Enable trace logging (most verbose)"
+        },
+        {
+          "syntax": "-quiet",
+          "desc": "Suppress logs below warn level"
+        },
+        {
+          "syntax": "-json",
+          "desc": "Emit logs as JSON instead of console-pretty"
+        },
+        {
+          "syntax": "-logfile <path>",
+          "desc": "Append log output to this file instead of stderr"
+        },
+        {
+          "syntax": "-log-caller",
+          "desc": "Include file:line caller info on every log line"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    "fgp",
+    "fgp -addr :9000 -debug",
+    "fgp -config conf/fgp.yaml",
+    "fgp -config conf/fgp.yaml -redirect -json -logfile /var/log/fgp.log",
+    "fgp -db-driver postgres -db-dsn \"postgres://localhost/fgp?sslmode=verify-full\""
+  ]
+}

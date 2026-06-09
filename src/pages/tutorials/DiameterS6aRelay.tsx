@@ -27,9 +27,9 @@ export default function DiameterS6aRelay() {
       </ul>
 
       <h2 id="topology">Topology</h2>
-      <pre><code>{`MME / test peer              FGP                    HSS / simulator
-  (initiator)         <-->   (both)         <-->   (initiator-side from FGP)
-                              :3868                      :3868`}</code></pre>
+      <CodeBlock code={`MME / test peer              fgp                    HSS / simulator
+  (initiator)         <-->   (both)         <-->   (initiator-side from fgp)
+                              :3868                      :3868`} />
       <p>
         The proxy listens for inbound from the MME on its <code>listen_addr</code>, and dials the
         HSS for the outbound side. We model the HSS peer as <code>connection_mode: initiator</code>{' '}

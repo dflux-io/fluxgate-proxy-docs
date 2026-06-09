@@ -104,6 +104,31 @@ h1, h2 { letter-spacing: -0.02em; }
 .hljs-emphasis { font-style: italic; }
 
 /* ---------------------------------------------------------------------------
+ * Bare <pre> authored directly in prose. The CodeBlock component is .not-prose
+ * and styles itself; a raw <pre> instead inherits Typography's pre color, which
+ * assumes a dark code background — on the light canvas that left near-invisible
+ * text. Give bare <pre> the same panel treatment as CodeBlock so it stays
+ * legible in both themes. `.prose pre` (0,1,1) outranks Typography's
+ * `:where(pre)` and the prose-pre:* utilities (both 0,1,0), so this wins.
+ * ------------------------------------------------------------------------ */
+.prose pre {
+  color: rgb(var(--ink));
+  background: rgb(var(--surface-muted));
+  border: 1px solid rgb(var(--surface-border));
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.prose pre code {
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+/* ---------------------------------------------------------------------------
  * Heading anchors — appear on hover.
  * ------------------------------------------------------------------------ */
 

@@ -1,5 +1,6 @@
 import DocPage from '../../components/DocPage';
 import Callout from '../../components/Callout';
+import CodeBlock from '../../components/CodeBlock';
 import { Link } from 'react-router-dom';
 
 export default function HotReload() {
@@ -80,25 +81,25 @@ export default function HotReload() {
         Take a single SBI producer out of rotation without removing it from config — useful for
         targeted ops on a flapping instance.
       </p>
-      <pre><code>{`fgpctl producers drain UDM http://udm-2.svc:8080
+      <CodeBlock lang="bash" code={`fgpctl producers drain UDM http://udm-2.svc:8080
 # verify
 fgpctl producers list UDM
 # restore when done
-fgpctl producers restore UDM http://udm-2.svc:8080`}</code></pre>
+fgpctl producers restore UDM http://udm-2.svc:8080`} />
 
       <h3 id="weight-shift">Shift producer weight</h3>
-      <pre><code>{`fgpctl producers weight UDM http://udm-canary.svc:8080 5
-fgpctl producers weight UDM http://udm-prod.svc:8080  95`}</code></pre>
+      <CodeBlock lang="bash" code={`fgpctl producers weight UDM http://udm-canary.svc:8080 5
+fgpctl producers weight UDM http://udm-prod.svc:8080  95`} />
       <p>Both take effect on the next request. No restart.</p>
 
       <h3 id="log-level">Change log level live</h3>
-      <pre><code>{`fgpctl log-level                    # show current
+      <CodeBlock lang="bash" code={`fgpctl log-level                    # show current
 fgpctl log-level set debug          # raise verbosity
-fgpctl log-level set info           # revert`}</code></pre>
+fgpctl log-level set info           # revert`} />
 
       <h3 id="validate-before-apply">Validate before apply</h3>
-      <pre><code>{`fgpctl validate config new-fgp.yaml
-fgpctl validate policy new-policy.json`}</code></pre>
+      <CodeBlock lang="bash" code={`fgpctl validate config new-fgp.yaml
+fgpctl validate policy new-policy.json`} />
 
       <h3 id="watcher-cadence">Tune watcher cadence</h3>
       <p>

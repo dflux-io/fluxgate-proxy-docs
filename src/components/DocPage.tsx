@@ -2,10 +2,12 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { neighbors, pageBySlug, sectionMeta } from '../manifest';
 import type { OutlineHeading } from '../types';
+import { Pencil } from 'lucide-react';
 import PageOutline from './PageOutline';
 import PrevNext from './PrevNext';
 import PageHeader from './PageHeader';
 import Breadcrumbs from './Breadcrumbs';
+import { pageFiles, repoEditBase } from '../generated/pageFiles';
 
 interface DocPageProps {
   slug: string;
@@ -85,6 +87,19 @@ export default function DocPage({ slug, lede, bare, children }: DocPageProps) {
           )}
           {children}
           <PrevNext prev={prev} next={next} />
+          {!bare && pageFiles[slug] && (
+            <div className="not-prose mt-8 border-t border-surface-border pt-4 text-sm">
+              <a
+                href={`${repoEditBase}${pageFiles[slug]}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-accent"
+              >
+                <Pencil size={13} strokeWidth={1.75} aria-hidden />
+                Edit this page on GitHub
+              </a>
+            </div>
+          )}
         </article>
       </main>
 
