@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+        sans: ['Geist Variable', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        mono: ['Geist Mono Variable', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         surface: {
@@ -16,6 +16,7 @@ export default {
           muted: 'rgb(var(--surface-muted) / <alpha-value>)',
           subtle: 'rgb(var(--surface-subtle) / <alpha-value>)',
           border: 'rgb(var(--surface-border) / <alpha-value>)',
+          'border-strong': 'rgb(var(--border-strong) / <alpha-value>)',
         },
         ink: {
           DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
@@ -24,6 +25,8 @@ export default {
         },
         accent: {
           DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          hover: 'rgb(var(--accent-hover) / <alpha-value>)',
+          subtle: 'rgb(var(--accent-subtle) / <alpha-value>)',
           fg: 'rgb(var(--accent-fg) / <alpha-value>)',
         },
       },

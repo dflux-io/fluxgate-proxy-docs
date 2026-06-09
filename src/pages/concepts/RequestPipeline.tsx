@@ -6,21 +6,23 @@ export default function RequestPipeline() {
   return (
     <DocPage
       slug="concepts/request-pipeline"
-      lede="Every SBI and Diameter request runs through one ordered filter chain before routing. The order is fixed in code; each filter can deny and short-circuit. Understanding the order tells you exactly what FGP did — and didn't — do on any given request."
+      lede="Every SBI and Diameter request runs through one ordered filter chain before routing. The order is fixed; each filter can deny and short-circuit. Understanding the order tells you exactly what the proxy did — and didn't — do on any given request."
     >
       <h2 id="overview">Pipeline overview</h2>
       <p>The full path from inbound to forwarded looks like this:</p>
-      <pre><code>{`Filter Chain (request) → Routing → Forward → Response Stage`}</code></pre>
+      <pre><code>{`Filter chain (request) → Routing → Forward → Response stage`}</code></pre>
       <p>
-        The filter chain is a plain ordered slice (<code>{`[]RequestFilter`}</code>). A filter
-        denies by returning an error; the chain short-circuits and the request is rejected.
-        Routing runs <em>after</em> the chain returns "allow" — routing is not itself a filter.
+        The request filter chain is an ordered sequence of filters. A filter denies by
+        returning an error; the chain short-circuits and the request is rejected without
+        running the filters that follow. Routing runs <em>after</em> the chain allows the
+        request — routing is not itself a filter.
       </p>
 
       <h2 id="filter-order">Filter order</h2>
       <p>
-        Built once by <code>{`buildRequestFilterChain`}</code>. Order is fixed in code — there
-        is no per-filter priority knob.
+        The request chain has exactly four filters, in this fixed order. There is no
+        per-filter priority knob for the chain itself; each filter is added only when its
+        feature is configured.
       </p>
 
       <table>
@@ -30,20 +32,17 @@ export default function RequestPipeline() {
         <tbody>
           <tr><td>1</td><td><strong>Auth</strong> (OAuth2 / JWT)</td><td><code>oauth2_required: true</code></td></tr>
           <tr><td>2</td><td><strong>Policy</strong> (allow/deny)</td><td>always</td></tr>
-          <tr><td>3..N</td><td>Rate limit</td><td>one filter per entry in <code>rate_limits[]</code></td></tr>
-          <tr><td></td><td>Threat detection</td><td>IMSI-catcher or location-tracking enabled</td></tr>
-          <tr><td></td><td>Anomaly scoring</td><td><code>anomaly_scoring.enabled: true</code></td></tr>
-          <tr><td></td><td>Tenant</td><td><code>tenants[]</code> non-empty</td></tr>
-          <tr><td></td><td><strong>Transformation</strong> (request phase)</td><td>request-phase rules in <code>transformation_rules[]</code></td></tr>
-          <tr><td>last</td><td>Audit</td><td>always</td></tr>
+          <tr><td>3..N</td><td><strong>Rate limit</strong></td><td>one filter per entry in <code>rate_limits[]</code></td></tr>
+          <tr><td>last</td><td><strong>Transformation</strong> (request phase)</td><td><code>transformation_rules[]</code> non-empty</td></tr>
         </tbody>
       </table>
 
-      <Callout type="note" title="Audit runs last on purpose">
-        The audit filter sits at the end of the chain so it sees the <em>final</em> decision,
-        not an intermediate one. If policy denies, the audit record captures that. If a
-        transformation modifies the request before forwarding, the audit record captures the
-        post-transformation state.
+      <Callout type="note" title="Decisions are logged, not audited">
+        The proxy has no audit store. Each request's decision (allow or deny, the deny reason,
+        the matched rule, and timing) is emitted as a structured JSON log line and counted in
+        Prometheus metrics. Ship those logs to your log pipeline or SIEM. See{' '}
+        <Link to="/concepts/policy-engine">Policy engine</Link> for the decision model and{' '}
+        <Link to="/guides/observability">Setting up observability</Link> for the log and metric surface.
       </Callout>
 
       <h2 id="what-each-filter-does">What each filter does</h2>
@@ -51,103 +50,86 @@ export default function RequestPipeline() {
       <h3 id="auth">Auth</h3>
       <p>
         Validates the <code>Authorization: Bearer …</code> header against the configured OAuth2
-        / JWT settings. Accepts RS256 with a configured public key, ES256/HS256 with the
-        appropriate secret, and supports JWKS rotation. Rejects requests with missing or
-        invalid tokens, expired tokens, or insufficient scope. Skipped entirely when{' '}
+        / JWT settings. Tokens must be signed with RS256; the proxy verifies the signature
+        against a configured public key or a key fetched by <code>kid</code> from a JWKS URL,
+        which supports key rotation. It enforces required scopes and can optionally reject
+        replayed tokens by <code>jti</code>. Requests with a missing, invalid, expired, or
+        out-of-scope token are denied. The filter is skipped entirely when{' '}
         <code>oauth2_required</code> is false.
       </p>
 
       <h3 id="policy">Policy</h3>
       <p>
-        Evaluates the active policy rules in <strong>store order — first match wins</strong>.
-        Each <code>PolicyRule</code> has an action (<code>allow</code>/<code>deny</code>) and a
-        match block. If no rule matches, the configured default action applies. The v1 default
-        is <code>deny</code> (fail-closed). See <Link to="/concepts/policy-engine">Policy engine</Link>{' '}
-        for the full evaluation model.
+        Evaluates the active policy rules in <strong>priority order — first match wins</strong>.
+        Rules are sorted by <code>priority</code> ascending (lower value runs first), with the
+        rule name as a deterministic tiebreak. Each <code>PolicyRule</code> has an action
+        (<code>allow</code> / <code>deny</code>) and its conditions. If no rule matches, the
+        configured default action applies. The v1 default is <code>deny</code> (fail-closed).
+        See <Link to="/concepts/policy-engine">Policy engine</Link> for the full evaluation model.
       </p>
 
       <h3 id="rate-limit">Rate limit</h3>
       <p>
-        One filter per entry in <code>rate_limits[]</code>. Each rate limit is a token bucket
-        keyed by consumer identity, SUPI, NF type, or a combination. Exceeding a bucket denies
-        the request with a configurable HTTP status (typically <code>429</code> on SBI,{' '}
-        <code>DIAMETER_TOO_BUSY</code> on Diameter).
-      </p>
-
-      <h3 id="threat-detection">Threat detection</h3>
-      <p>
-        Detects IMSI-catcher signatures (high-volume identity requests) and location tracking
-        (repeated cell-id queries for the same SUPI from different consumers). Configurable
-        windows and thresholds. Decisions feed back into the audit record and metrics.
-      </p>
-
-      <h3 id="anomaly-scoring">Anomaly scoring</h3>
-      <p>
-        A sliding-window scorer that flags requests with unusual shape — rare paths, off-hours
-        traffic, unfamiliar consumer identity. Configurable score thresholds turn high scores
-        into deny decisions; the default is observe-only.
-      </p>
-
-      <h3 id="tenant">Tenant</h3>
-      <p>
-        Resolves the PLMN (<code>MCC</code> / <code>MNC</code>) in the SUPI or the
-        Origin-Realm AVP to a tenant, attaches the tenant identity to the request, and rejects
-        traffic for unknown tenants when configured. Used downstream by per-tenant quotas and
-        per-tenant policy rules.
+        One filter is added per entry in <code>rate_limits[]</code>. Each rate-limit rule is a
+        token bucket keyed by consumer identity, SUPI, NF type, or a combination. When a bucket
+        is exhausted the filter denies the request and the chain short-circuits. See{' '}
+        <Link to="/guides/rate-limiting">Configuring rate limiting</Link>.
       </p>
 
       <h3 id="transform-request">Transformation (request phase)</h3>
       <p>
-        Applies header injection / removal / rewriting and body field operations to the request
-        before forwarding. Rules are sorted by <code>priority</code> ascending at filter-build
-        time (lowest value runs first), per phase. Operators iterate with the dry-run endpoint
-        so a malformed rule never reaches the data path. See{' '}
-        <Link to="/concepts/transformation-engine">Transformation engine</Link>.
-      </p>
-
-      <h3 id="audit">Audit</h3>
-      <p>
-        Always last in the request chain. Builds a structured record (timestamp, request ID,
-        method, path or AVP set, target NF type, source NF type, decision, deny reason, status
-        code, duration) and enqueues it on the audit queue. Workers drain the queue and write
-        to the audit store and fan out to any configured sinks.
+        Applies header injection, removal, and rewriting, plus body field operations, to the
+        request before forwarding. Request-phase rules run in <code>priority</code> order
+        (lowest value first). The filter is added only when <code>transformation_rules[]</code>{' '}
+        is non-empty. See <Link to="/concepts/transformation-engine">Transformation engine</Link>.
       </p>
 
       <h2 id="routing">Routing</h2>
       <p>
-        Routing runs <em>after</em> the filter chain returns "allow":
+        Routing runs <em>after</em> the filter chain allows the request:
       </p>
       <ul>
-        <li><strong>SBI:</strong> <code>RoutingEngine.Resolve</code> picks a target producer.</li>
+        <li><strong>SBI:</strong> the routing engine picks a target producer.</li>
         <li>
-          <strong>Diameter:</strong> <code>RoutingEngine.ResolveWithFailover</code> picks a peer
-          for the message's realm, with retry on the next peer if the first fails.
+          <strong>Diameter:</strong> the routing engine picks a peer for the message's realm,
+          retrying on the next peer if the first fails.
         </li>
       </ul>
       <p>
         Routing reads the same control-plane store as the filter chain — routing rules,
-        producer pool, weights, sticky-session table, drained-peer set.
+        producer pool, weights, sticky-session table, drained-peer set. See{' '}
+        <Link to="/concepts/routing-engine">Routing engine</Link>.
       </p>
 
       <h2 id="response-stage">Response stage</h2>
+      <p>
+        After the producer (or peer) answers, the response runs through a separate response
+        stage before it reaches the consumer.
+      </p>
       <table>
         <thead>
           <tr><th></th><th>SBI</th><th>Diameter</th></tr>
         </thead>
         <tbody>
-          <tr><td>Wrapper</td><td><code>ResponseFilterChain</code> (3 filters)</td><td>Single <code>TransformationResponseFilter</code></td></tr>
-          <tr><td>Filters</td><td>HeaderStrip → TopologyHiding → Transformation (response)</td><td>Transformation (response) only — <code>ApplyDiameterAnswer</code></td></tr>
-          <tr><td>Failure semantics</td><td>Filter error in <code>ModifyResponse</code> → 502 to client; retry path logs and continues</td><td>Errors logged, answer still sent</td></tr>
-          <tr><td>Audit pairing</td><td><code>EmitResponseAudit</code> via chain</td><td><code>EmitResponseAudit</code> invoked explicitly from <code>saveDiameterAudit</code></td></tr>
+          <tr>
+            <td>Steps</td>
+            <td>Strip configured response headers → apply topology hiding (mask internal producer addresses) → apply response-phase transformation rules</td>
+            <td>Apply response-phase transformation rules to the answer</td>
+          </tr>
+          <tr>
+            <td>Failure semantics</td>
+            <td>A response-rewrite error returns <code>502</code> to the consumer; the retry path logs and continues</td>
+            <td>Errors are logged and the answer is still sent</td>
+          </tr>
         </tbody>
       </table>
 
       <h2 id="hot-reload">Hot reload</h2>
       <p>
         Each chain is immutable once built. When a config or control-plane-store change lands,
-        FGP builds fresh request and response chains and replaces them atomically. The SBI
-        proxy and Diameter relay both receive the same chain pointer — policy stays consistent
-        across protocols, and there is no per-request lock. See{' '}
+        the proxy builds fresh request and response chains and swaps them in atomically. The SBI
+        proxy and the Diameter relay both pick up the new chains without dropping in-flight
+        requests, so policy stays consistent across protocols. See{' '}
         <Link to="/guides/hot-reload-and-runtime-ops">Hot reload and runtime ops</Link>.
       </p>
     </DocPage>

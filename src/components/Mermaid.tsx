@@ -29,11 +29,75 @@ export default function Mermaid({ code }: MermaidProps) {
     async function render() {
       try {
         const mermaid = await loadMermaid();
+        const dark = getTheme() === 'dark';
+        const font = "'Geist Variable', ui-sans-serif, system-ui, sans-serif";
+        // Geist-matched: neutral-gray nodes/edges, blue reserved for emphasis
+        // (actors, accent class). Only the `base` theme is fully themable.
+        const themeVariables = dark
+          ? {
+              darkMode: true,
+              background: '#0a0a0a',
+              fontFamily: font,
+              fontSize: '14px',
+              primaryColor: '#111111',
+              primaryTextColor: '#ededed',
+              primaryBorderColor: '#2a2a2a',
+              secondaryColor: '#0d1b2a',
+              secondaryTextColor: '#ededed',
+              secondaryBorderColor: '#3491ff',
+              tertiaryColor: '#1a1a1a',
+              tertiaryBorderColor: '#2a2a2a',
+              lineColor: '#707070',
+              textColor: '#a1a1a1',
+              nodeBorder: '#2a2a2a',
+              mainBkg: '#111111',
+              clusterBkg: '#0a0a0a',
+              clusterBorder: '#2a2a2a',
+              edgeLabelBackground: '#0a0a0a',
+              titleColor: '#ededed',
+              actorBorder: '#3491ff',
+              actorBkg: '#0d1b2a',
+              actorTextColor: '#ededed',
+              activationBkgColor: '#0d1b2a',
+              noteBkgColor: '#111111',
+              noteBorderColor: '#2a2a2a',
+              noteTextColor: '#ededed',
+            }
+          : {
+              darkMode: false,
+              background: '#ffffff',
+              fontFamily: font,
+              fontSize: '14px',
+              primaryColor: '#f7f7f7',
+              primaryTextColor: '#171717',
+              primaryBorderColor: '#d4d4d4',
+              secondaryColor: '#f0f7ff',
+              secondaryTextColor: '#171717',
+              secondaryBorderColor: '#0070f3',
+              tertiaryColor: '#fafafa',
+              tertiaryBorderColor: '#ebebeb',
+              lineColor: '#a3a3a3',
+              textColor: '#525252',
+              nodeBorder: '#d4d4d4',
+              mainBkg: '#f7f7f7',
+              clusterBkg: '#fafafa',
+              clusterBorder: '#ebebeb',
+              edgeLabelBackground: '#ffffff',
+              titleColor: '#171717',
+              actorBorder: '#0070f3',
+              actorBkg: '#f0f7ff',
+              actorTextColor: '#171717',
+              activationBkgColor: '#f0f7ff',
+              noteBkgColor: '#f7f7f7',
+              noteBorderColor: '#ebebeb',
+              noteTextColor: '#171717',
+            };
         mermaid.initialize({
           startOnLoad: false,
-          theme: getTheme() === 'dark' ? 'dark' : 'default',
+          theme: 'base',
           securityLevel: 'strict',
-          fontFamily: 'inherit',
+          fontFamily: font,
+          themeVariables,
         });
         const { svg } = await mermaid.render(idRef.current, code);
         if (!cancelled && ref.current) {
@@ -68,7 +132,7 @@ export default function Mermaid({ code }: MermaidProps) {
   return (
     <div
       ref={ref}
-      className="not-prose my-6 flex justify-center overflow-x-auto rounded-xl border border-surface-border bg-surface-muted p-4 panel-glow [&>svg]:max-w-full"
+      className="not-prose my-6 flex justify-center overflow-x-auto rounded-lg border border-surface-border bg-surface-muted p-4 panel-glow [&>svg]:max-w-full"
     />
   );
 }

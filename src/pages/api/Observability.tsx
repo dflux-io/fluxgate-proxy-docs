@@ -7,83 +7,82 @@ export default function Observability() {
   return (
     <DocPage
       slug="api/observability"
-      lede="Deep health, config and policy validation, an aggregate metrics summary, and the audit endpoints — both request audit and admin audit. The Prometheus /metrics endpoint sits on the SBI listener, not under /admin; see the Metrics reference."
+      lede="Deep health, config validation, and an aggregate metrics summary on the admin API. The Prometheus /metrics endpoint sits on the SBI listener, not under /admin; see the Metrics reference."
     >
       <h2 id="health">Deep health</h2>
       <p><HttpMethod method="GET" /> <code>/admin/health/deep</code></p>
       <p>
-        Walks the producer pool and reports each producer's reachability. Returns 200 only
-        when at least one producer per configured NF type is reachable. Use as a Kubernetes
-        readiness probe.
+        Runs three coarse subsystem checks — whether any producers are configured, whether the
+        control-plane store is reachable, and the state of the Diameter relay — and reports each
+        result. Returns <code>200</code> when no check fails, otherwise <code>503</code>. Use as a
+        Kubernetes readiness probe.
       </p>
       <CodeBlock lang="json" code={`{
-  "ok": true,
-  "nf_types": {
-    "UDM":  {"reachable": 2, "total": 2},
-    "AUSF": {"reachable": 1, "total": 2, "unreachable": ["http://ausf-2.svc:8080"]}
+  "status": "healthy",
+  "timestamp": "2026-06-09T12:00:00Z",
+  "checks": {
+    "producers": "ok",
+    "store": "ok",
+    "diameter": "disabled"
   }
 }`} />
+      <p>
+        <code>status</code> is <code>healthy</code>, <code>degraded</code>, or <code>unhealthy</code>.
+        Each entry under <code>checks</code> is <code>ok</code>, <code>degraded</code>,
+        <code>fail</code>, or — for an unconfigured Diameter relay — <code>disabled</code>.
+      </p>
 
-      <h2 id="validation">Validation</h2>
+      <h2 id="validation">Config validation</h2>
       <p><HttpMethod method="POST" /> <code>/admin/config/validate</code></p>
-      <p>Validates a candidate config file (YAML or JSON) without applying it. Returns either <code>{`{"ok": true}`}</code> or a dotted-path error.</p>
-
-      <p><HttpMethod method="POST" /> <code>/admin/policy/validate</code></p>
-      <p>Validates a candidate policy document without applying it. Same shape and semantics as the policy <code>PUT</code> would use.</p>
+      <p>
+        Validates a candidate config payload (YAML or JSON, selected by the <code>Content-Type</code>
+        header) without applying it. Returns <code>{`{"valid": true}`}</code> on success, or
+        <code>{`{"valid": false, "errors": ["..."]}`}</code> with one string per validation failure.
+      </p>
+      <CodeBlock lang="json" code={`{
+  "valid": false,
+  "errors": [
+    "admin.listen: missing port",
+    "rate_limits[0].requests_per_second: must be > 0"
+  ]
+}`} />
 
       <h2 id="metrics-summary">Metrics summary</h2>
       <p><HttpMethod method="GET" /> <code>/admin/metrics/summary</code></p>
       <p>
-        Aggregated metrics summary — counters and rates rolled up for at-a-glance use. Distinct
-        from the full <code>/metrics</code> Prometheus exposition on the SBI listener (see
-        <Link to="/reference/metrics">Metrics reference</Link>).
-      </p>
-
-      <h2 id="admin-audit">Admin audit log</h2>
-      <p><HttpMethod method="GET" /> <code>/admin/audit/admin-actions</code></p>
-      <p>
-        Recent mutations to the admin API. Each record carries the actor identity (from API
-        key, JWT, or mTLS), endpoint, path params, request id, and result.
+        An aggregate snapshot of the registered metric families, rolled up for at-a-glance use.
+        Distinct from the full <code>/metrics</code> Prometheus exposition on the SBI listener (see
+        the <Link to="/reference/metrics">Metrics reference</Link>).
       </p>
       <p>Query parameters:</p>
       <ul>
-        <li><code>limit</code> — default 100, max 1000.</li>
+        <li><code>prefix</code> — include only metric families whose name starts with this string.</li>
+        <li><code>max_series</code> — cap the number of emitted series (default 10000).</li>
       </ul>
-
-      <h2 id="audit-query">Request audit query</h2>
       <p>
-        The request audit trail is served by the SBI listener at <code>/audit</code>, not the
-        admin port. <code>fgpctl audit</code> wraps this; the URL stays on the SBI port because
-        the audit data is part of the daemon's runtime surface, not its control plane.
-      </p>
-      <p><HttpMethod method="GET" /> <code>http(s)://&lt;sbi&gt;/audit?limit=N</code></p>
-      <p>
-        Returns recent audit records — one per request decision. See{' '}
-        <Link to="/guides/audit-and-compliance">Audit and compliance</Link> for the record
-        shape and field list.
+        Series are grouped under <code>families</code>, keyed by metric name. When the
+        <code>max_series</code> cap is hit, the response adds <code>{`"truncated": true`}</code> so a
+        caller knows to narrow the request with <code>prefix</code>.
       </p>
 
       <h2 id="examples">Examples</h2>
       <CodeBlock lang="bash" code={`# Kubernetes readiness
-curl -fsH "X-Admin-Key: $FGP_ADMIN_KEY" https://fgp.svc:8091/admin/health/deep
+curl -fsH "X-Admin-Key: $FGP_ADMIN_KEY" https://fgp.svc:9091/admin/health/deep
 
-# Pre-deploy validate
+# Pre-deploy config validate
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" -H "Content-Type: application/json" \\
-  -X POST https://fgp.svc:8091/admin/policy/validate \\
-  -d @candidate-policy.json
+  -X POST https://fgp.svc:9091/admin/config/validate \\
+  -d @candidate-config.json
 
-# Operator forensics
+# Aggregate metrics for the rate-limit subsystem
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" \\
-  "https://fgp.svc:8091/admin/audit/admin-actions?limit=500" | jq
-
-# Request-decision audit
-curl -s "http://fgp.svc:8090/audit?limit=200" | jq`} />
+  "https://fgp.svc:9091/admin/metrics/summary?prefix=fgp_ratelimit_&max_series=500" | jq`} />
 
       <h2 id="related">Related</h2>
       <ul>
         <li><Link to="/reference/metrics">Metrics reference</Link> — the full Prometheus series list.</li>
         <li><Link to="/guides/observability">Observability guide</Link> — scrape, dashboards, alerts, tracing.</li>
-        <li><Link to="/guides/audit-and-compliance">Audit and compliance</Link>.</li>
+        <li><Link to="/guides/audit-and-compliance">Auditing and compliance</Link> — shipping structured decision logs.</li>
       </ul>
     </DocPage>
   );

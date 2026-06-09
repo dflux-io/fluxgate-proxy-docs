@@ -5,6 +5,7 @@ import Index from './pages/Index';
 import Glossary from './pages/Glossary';
 
 import Introduction from './pages/introduction/Introduction';
+import Why from './pages/introduction/Why';
 import Quickstart from './pages/introduction/Quickstart';
 
 import Architecture from './pages/concepts/Architecture';
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/glossary" element={<Glossary />} />
 
         <Route path="/introduction" element={<Introduction />} />
+        <Route path="/introduction/why" element={<Why />} />
         <Route path="/introduction/quickstart" element={<Quickstart />} />
 
         <Route path="/concepts/architecture" element={<Architecture />} />

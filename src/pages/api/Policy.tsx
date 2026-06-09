@@ -1,109 +1,129 @@
 import DocPage from '../../components/DocPage';
 import CodeBlock from '../../components/CodeBlock';
 import HttpMethod from '../../components/HttpMethod';
+import Callout from '../../components/Callout';
 import { Link } from 'react-router-dom';
 
 export default function Policy() {
   return (
     <DocPage
       slug="api/policy"
-      lede="Read and write the full policy document, manage versions and rollback, and CRUD individual policy rules. All policy operations are hot-reloaded — no restart, no dropped requests."
+      lede="Read the active policy document, capture and restore immutable snapshots, and CRUD individual rules through the unified rules surface."
     >
-      <h2 id="full-policy">Full policy</h2>
+      <p>
+        All examples assume the <code>X-Admin-Key</code> header and base URL from{' '}
+        <Link to="/api/overview">the admin API overview</Link>. Every write here is hot-reloaded —
+        no restart, no dropped requests; see <Link to="/api/overview">the overview</Link> for the
+        hot-reload guarantee.
+      </p>
+
+      <h2 id="read-policy">Read the policy</h2>
       <p><HttpMethod method="GET" /> <code>/admin/policy</code></p>
-      <p>Returns the current active policy document — every rule, rate limit, tenant, and config blob. See <Link to="/reference/policy-schema">Policy schema</Link>.</p>
-
-      <p><HttpMethod method="PUT" /> <code>/admin/policy</code></p>
       <p>
-        Replaces the full policy document. Validates the candidate, persists it as a new
-        version, atomic-swaps the filter chain. Returns the new version metadata.
+        Returns the current active policy document — every policy rule, rate-limit rule,
+        transformation rule, and routing rule. This endpoint is read-only: mutations go through the
+        per-rule CRUD surface below, or through snapshot restore. See{' '}
+        <Link to="/reference/policy-schema">Policy schema</Link>.
       </p>
 
-      <h2 id="versions">Versions</h2>
-      <p><HttpMethod method="GET" /> <code>/admin/policy/versions</code></p>
-      <p>Lists policy versions in chronological order. Each entry carries version number, timestamp, and operator identity.</p>
-
-      <p><HttpMethod method="GET" /> <code>/admin/policy/versions/{`{version}`}</code></p>
-      <p>Returns the full policy document for a specific version.</p>
-
-      <p><HttpMethod method="GET" /> <code>/admin/policy/versions/compare?v1=N&amp;v2=M</code></p>
-      <p>Structural diff between two versions. Returns one entry per logical change (path / op / before / after). See <Link to="/guides/policy-versioning">Policy versioning and rollback</Link> for the operator workflow.</p>
-
-      <p><HttpMethod method="POST" /> <code>/admin/policy/rollback/{`{version}`}</code></p>
+      <h2 id="snapshots">Snapshots</h2>
       <p>
-        Atomically rolls back to a prior version. Creates a new version whose content matches
-        the target — history is append-only.
+        A snapshot is a manual, immutable point-in-time capture of the full policy config. Create
+        one before a risky change, then restore it to roll the entire policy back. See{' '}
+        <Link to="/guides/policy-versioning">Versioning and rolling back policy</Link> for the
+        operator workflow.
       </p>
 
-      <h2 id="validate">Validate</h2>
-      <p><HttpMethod method="POST" /> <code>/admin/policy/validate</code></p>
+      <p><HttpMethod method="GET" /> <code>/admin/policy/snapshots</code></p>
+      <p>Lists snapshot metadata, newest first. The captured config is omitted — fetch a single snapshot to see it.</p>
+
+      <p><HttpMethod method="POST" /> <code>/admin/policy/snapshots</code></p>
       <p>
-        Runs the same shape-and-semantic checks an update would, without committing. Returns
-        either <code>{`{"ok": true}`}</code> or a validation error.
+        Captures the current live policy as a new snapshot. Body is{' '}
+        <code>{`{"name": "...", "description": "..."}`}</code>; <code>name</code> is required. Returns
+        the new snapshot metadata with <code>201 Created</code>.
       </p>
 
-      <h2 id="rules-crud">Policy rule CRUD</h2>
+      <p><HttpMethod method="GET" /> <code>/admin/policy/snapshots/{`{id}`}</code></p>
+      <p>Returns one snapshot, including its captured config. 404 if no snapshot has that id.</p>
+
+      <p><HttpMethod method="DELETE" /> <code>/admin/policy/snapshots/{`{id}`}</code></p>
+      <p>Deletes one snapshot.</p>
+
+      <p><HttpMethod method="POST" /> <code>/admin/policy/snapshots/{`{id}`}/restore</code></p>
+      <Callout type="warning">
+        Restore overwrites the entire live policy with the snapshot's captured config and does not
+        first capture the current state. Take a snapshot of the running policy before you restore.
+        Restore requires the admin role.
+      </Callout>
+
+      <h2 id="rules">Rules</h2>
       <p>
-        These endpoints operate on individual rules. Use them for incremental edits; use
-        <code>PUT /admin/policy</code> for a full-document replacement.
+        Individual policy, transformation, routing, and rate-limit rules share one unified surface
+        at <code>/admin/rules</code>. Each rule carries a <code>type</code> discriminator —{' '}
+        <code>policy</code>, <code>transformation</code>, <code>routing</code>, or{' '}
+        <code>rate-limit</code>. Use these endpoints for incremental edits.
       </p>
 
-      <p><HttpMethod method="GET" /> <code>/admin/policy-rules</code></p>
-      <p>Lists all policy rules.</p>
+      <p><HttpMethod method="GET" /> <code>/admin/rules</code></p>
+      <p>
+        Lists all rules across the four types, each entry carrying its <code>type</code>. Add{' '}
+        <code>?type=policy</code> (or another type) to narrow to one type.
+      </p>
 
-      <p><HttpMethod method="POST" /> <code>/admin/policy-rules</code></p>
-      <p>Creates a rule. Body is a <code>PolicyRule</code> (see <Link to="/reference/policy-schema">schema</Link>). 409 if a rule by that name exists.</p>
+      <p><HttpMethod method="POST" /> <code>/admin/rules</code></p>
+      <p>
+        Creates a rule. The body must include <code>type</code> plus the type-specific fields — for
+        a policy rule, a <code>PolicyRule</code> with <code>"type": "policy"</code> (see{' '}
+        <Link to="/reference/policy-schema">schema</Link>). Rule names are globally unique across all
+        four types: <code>409</code> if any rule already owns the name.
+      </p>
 
-      <p><HttpMethod method="GET" /> <code>/admin/policy-rules/{`{name}`}</code></p>
-      <p>Returns one rule.</p>
+      <p><HttpMethod method="GET" /> <code>/admin/rules/{`{name}`}</code></p>
+      <p>Returns one rule by name. The response carries an <code>ETag</code> for optimistic concurrency.</p>
 
-      <p><HttpMethod method="PUT" /> <code>/admin/policy-rules/{`{name}`}</code></p>
-      <p>Updates one rule. Upsert.</p>
+      <p><HttpMethod method="PUT" /> <code>/admin/rules/{`{name}`}</code></p>
+      <p>
+        Updates one rule. If the body declares a <code>type</code>, it must match the existing rule's
+        type — a PUT cannot reassign a rule's type (delete and recreate instead). Send the rule's
+        <code>ETag</code> in <code>If-Match</code> for a guarded update.
+      </p>
 
-      <p><HttpMethod method="DELETE" /> <code>/admin/policy-rules/{`{name}`}</code></p>
-      <p>Deletes one rule. Idempotent — 204 either way.</p>
-
-      <h2 id="threat-and-anomaly">Threat detection and anomaly scoring</h2>
-      <p>The two config blobs are surfaced as standalone endpoints:</p>
-      <p><HttpMethod method="GET" /> <code>/admin/threat-detection</code></p>
-      <p><HttpMethod method="PUT" /> <code>/admin/threat-detection</code></p>
-      <p><HttpMethod method="GET" /> <code>/admin/anomaly-scoring</code></p>
-      <p><HttpMethod method="PUT" /> <code>/admin/anomaly-scoring</code></p>
-      <p>See <Link to="/reference/policy-schema">Policy schema</Link> for the blob shapes.</p>
-
-      <h2 id="tenants">Tenants</h2>
-      <p><HttpMethod method="GET" /> <code>/admin/tenants</code></p>
-      <p>Lists tenants.</p>
-
-      <p><HttpMethod method="POST" /> <code>/admin/tenants</code></p>
-      <p>Creates a tenant. 409 if a tenant for that PLMN already exists.</p>
-
-      <p><HttpMethod method="PUT" /> <code>/admin/tenants/{`{mcc}`}/{`{mnc}`}</code></p>
-      <p>Upserts a tenant by PLMN.</p>
-
-      <p><HttpMethod method="DELETE" /> <code>/admin/tenants/{`{mcc}`}/{`{mnc}`}</code></p>
-      <p>Deletes a tenant.</p>
+      <p><HttpMethod method="DELETE" /> <code>/admin/rules/{`{name}`}</code></p>
+      <p>Deletes one rule by name.</p>
 
       <h2 id="examples">Examples</h2>
 
-      <h3 id="add-rule">Add a rule</h3>
+      <h3 id="add-rule">Add a policy rule</h3>
       <CodeBlock lang="bash" code={`curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" \\
   -H "Content-Type: application/json" \\
-  -X POST https://fgp.svc:8091/admin/policy-rules \\
+  -X POST https://fgp.svc:9091/admin/rules \\
   -d '{
+    "type": "policy",
     "name": "allow-nudm-sdm-reads",
+    "priority": 100,
     "action": "allow",
-    "match": {"method": "GET", "path_prefix": "/nudm-sdm/v2/"}
+    "methods": ["GET"],
+    "path_patterns": ["/nudm-sdm/v2/.*"]
   }'`} />
 
-      <h3 id="diff-and-rollback">Diff and rollback</h3>
-      <CodeBlock lang="bash" code={`# what changed between v41 and v42?
+      <h3 id="snapshot-and-restore">Snapshot and restore</h3>
+      <CodeBlock lang="bash" code={`# capture the current live policy before a risky change
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" \\
-  "https://fgp.svc:8091/admin/policy/versions/compare?v1=41&v2=42" | jq
+  -H "Content-Type: application/json" \\
+  -X POST https://fgp.svc:9091/admin/policy/snapshots \\
+  -d '{"name": "pre-rollout", "description": "before nudm change"}' | jq
 
-# undo
+# roll the whole policy back to snapshot 7
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" \\
-  -X POST https://fgp.svc:8091/admin/policy/rollback/41`} />
+  -X POST https://fgp.svc:9091/admin/policy/snapshots/7/restore`} />
+
+      <h2 id="where-to-go-next">Where to go next</h2>
+      <ul>
+        <li><Link to="/reference/policy-schema">Policy schema</Link> — the full <code>PolicyRule</code> shape.</li>
+        <li><Link to="/guides/policy-versioning">Versioning and rolling back policy</Link> — the snapshot/restore workflow.</li>
+        <li><Link to="/api/overview">Admin API overview</Link> — auth, base URL, error model, and idempotency.</li>
+      </ul>
     </DocPage>
   );
 }

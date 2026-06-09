@@ -38,20 +38,20 @@ export default function SiteNav({ onNavigate }: SiteNavProps) {
               <Icon size={12} strokeWidth={2} aria-hidden />
               {group.title}
             </h2>
-            <ul className="space-y-0.5">
+            <ul className="ml-[7px] space-y-0.5 border-l border-surface-border">
               {group.pages.map((page) => {
                 const to = `/${page.slug}`;
                 const isActive = location.pathname === to;
                 return (
-                  <li key={page.slug}>
+                  <li key={page.slug} className="-ml-px">
                     <NavLink
                       to={to}
                       onClick={onNavigate}
                       className={[
-                        'block rounded-md px-3 py-1.5 text-[13px] leading-snug transition-colors',
+                        'block border-l-2 py-1.5 pl-3.5 pr-3 text-[13px] leading-snug transition-colors',
                         isActive
-                          ? 'bg-surface-subtle text-ink font-medium'
-                          : 'text-ink-muted hover:bg-surface-muted hover:text-ink',
+                          ? 'border-l-accent font-medium text-accent'
+                          : 'border-l-transparent text-ink-muted hover:border-l-surface-border-strong hover:text-ink',
                       ].join(' ')}
                     >
                       {page.title}
