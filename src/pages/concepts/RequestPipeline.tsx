@@ -1,5 +1,6 @@
 import DocPage from '../../components/DocPage';
 import Callout from '../../components/Callout';
+import CodeBlock from '../../components/CodeBlock';
 import { Link } from 'react-router-dom';
 
 export default function RequestPipeline() {
@@ -10,7 +11,7 @@ export default function RequestPipeline() {
     >
       <h2 id="overview">Pipeline overview</h2>
       <p>The full path from inbound to forwarded looks like this:</p>
-      <pre><code>{`Filter chain (request) → Routing → Forward → Response stage`}</code></pre>
+      <CodeBlock code={`Filter chain (request) → Routing → Forward → Response stage`} />
       <p>
         The request filter chain is an ordered sequence of filters. A filter denies by
         returning an error; the chain short-circuits and the request is rejected without

@@ -3,12 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Documentation site for fluxgate-proxy (FGP). React + TypeScript + Tailwind. Pages authored as JSX.",
+  "description": "Documentation for fluxgate-proxy — a high-performance 5G SBI / 4G Diameter signaling proxy: policy, transformation, content-based routing, and rate limiting at wire speed.",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/build-metrics.mjs && node scripts/build-cli.mjs && node scripts/build-pagemeta.mjs && node scripts/build-search-index.mjs && node scripts/build-sitemap.mjs && vite",
+    "build": "node scripts/build-metrics.mjs && node scripts/build-cli.mjs && node scripts/build-pagemeta.mjs && node scripts/build-search-index.mjs && node scripts/build-sitemap.mjs && tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "build:metrics": "node scripts/build-metrics.mjs",
+    "build:cli": "node scripts/build-cli.mjs",
+    "build:pagemeta": "node scripts/build-pagemeta.mjs",
+    "build:search": "node scripts/build-search-index.mjs",
+    "build:sitemap": "node scripts/build-sitemap.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
@@ -16,6 +21,7 @@
     "highlight.js": "^11.10.0",
     "lucide-react": "^1.14.0",
     "mermaid": "^11.4.1",
+    "minisearch": "^7.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0"

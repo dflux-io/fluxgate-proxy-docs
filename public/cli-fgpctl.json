@@ -1,0 +1,275 @@
+{
+  "generatedAt": "2026-06-09",
+  "name": "fgpctl",
+  "tagline": "Fluxgate Proxy admin CLI",
+  "usage": [],
+  "sections": [
+    {
+      "title": "Global Options",
+      "items": [
+        {
+          "syntax": "-url <addr>",
+          "desc": "Admin API base URL (default: http://127.0.0.1:9091)"
+        },
+        {
+          "syntax": "-key <key>",
+          "desc": "Admin API key (or env: FGP_ADMIN_KEY)"
+        },
+        {
+          "syntax": "-v, -version",
+          "desc": "Print version and exit"
+        }
+      ]
+    },
+    {
+      "title": "Status & Policy",
+      "items": [
+        {
+          "syntax": "status",
+          "desc": "Show FGP status"
+        },
+        {
+          "syntax": "policy",
+          "desc": "Show current policy"
+        },
+        {
+          "syntax": "policy update <file>",
+          "desc": "Update policy from a JSON file"
+        }
+      ]
+    },
+    {
+      "title": "Rules & Limits",
+      "items": [
+        {
+          "syntax": "policy-rules",
+          "desc": "List policy rules"
+        },
+        {
+          "syntax": "policy-rules get <name>",
+          "desc": "Get a specific rule"
+        },
+        {
+          "syntax": "policy-rules add <json|@file>",
+          "desc": "Create a rule"
+        },
+        {
+          "syntax": "policy-rules update <name> <json|@file>",
+          "desc": "Update a rule"
+        },
+        {
+          "syntax": "policy-rules delete <name>",
+          "desc": "Delete a rule"
+        },
+        {
+          "syntax": "policy-rules delete-all",
+          "desc": "Delete every policy rule"
+        },
+        {
+          "syntax": "rate-limits",
+          "desc": "List rate-limit rules"
+        },
+        {
+          "syntax": "rate-limits get <name>",
+          "desc": "Get a specific rate limit"
+        },
+        {
+          "syntax": "rate-limits add <json|@file>",
+          "desc": "Create a rate limit"
+        },
+        {
+          "syntax": "rate-limits update <name> <json|@file>",
+          "desc": "Update a rate limit"
+        },
+        {
+          "syntax": "rate-limits delete <name>",
+          "desc": "Delete a rate limit"
+        },
+        {
+          "syntax": "rate-limits delete-all",
+          "desc": "Delete every rate limit"
+        }
+      ]
+    },
+    {
+      "title": "Transformations & Routing",
+      "items": [
+        {
+          "syntax": "transformations list",
+          "desc": "List transformation rules"
+        },
+        {
+          "syntax": "transformations get <name>",
+          "desc": "Get a transformation rule"
+        },
+        {
+          "syntax": "transformations add <json|@file>",
+          "desc": "Create a transformation rule"
+        },
+        {
+          "syntax": "transformations update <name> <json|@file>",
+          "desc": "Update a transformation rule"
+        },
+        {
+          "syntax": "transformations delete <name>",
+          "desc": "Delete a transformation rule"
+        },
+        {
+          "syntax": "transformations delete-all",
+          "desc": "Delete every transformation rule"
+        },
+        {
+          "syntax": "routing-rules list",
+          "desc": "List routing rules"
+        },
+        {
+          "syntax": "routing-rules get <name>",
+          "desc": "Get a routing rule"
+        },
+        {
+          "syntax": "routing-rules add <json|@file>",
+          "desc": "Create a routing rule"
+        },
+        {
+          "syntax": "routing-rules update <name> <json|@file>",
+          "desc": "Update a routing rule"
+        },
+        {
+          "syntax": "routing-rules delete <name>",
+          "desc": "Delete a routing rule"
+        },
+        {
+          "syntax": "routing-rules delete-all",
+          "desc": "Delete every routing rule"
+        }
+      ]
+    },
+    {
+      "title": "Producers & Profiles",
+      "items": [
+        {
+          "syntax": "producer-configs list",
+          "desc": "List producer configs"
+        },
+        {
+          "syntax": "producer-configs get <name>",
+          "desc": "Get a producer config"
+        },
+        {
+          "syntax": "producer-configs add <json|@file>",
+          "desc": "Create a producer config"
+        },
+        {
+          "syntax": "producer-configs update <name> <json|@file>",
+          "desc": "Update a producer config"
+        },
+        {
+          "syntax": "producer-configs delete <name>",
+          "desc": "Delete a producer config"
+        },
+        {
+          "syntax": "producer-configs delete-all",
+          "desc": "Delete every producer config"
+        },
+        {
+          "syntax": "nrf-profiles list",
+          "desc": "List NRF NF profiles"
+        },
+        {
+          "syntax": "nrf-profiles get <name>",
+          "desc": "Get an NRF NF profile"
+        },
+        {
+          "syntax": "nrf-profiles add <json|@file>",
+          "desc": "Create an NRF NF profile"
+        },
+        {
+          "syntax": "nrf-profiles update <name> <json|@file>",
+          "desc": "Update an NRF NF profile"
+        },
+        {
+          "syntax": "nrf-profiles delete <name>",
+          "desc": "Delete an NRF NF profile"
+        },
+        {
+          "syntax": "nrf-profiles delete-all",
+          "desc": "Delete every NRF NF profile"
+        }
+      ]
+    },
+    {
+      "title": "SBI Peer Ops",
+      "items": [
+        {
+          "syntax": "producers list <nf_type>",
+          "desc": "List SBI peers for an NF type"
+        },
+        {
+          "syntax": "producers drain <nf_type> <addr>",
+          "desc": "Drain an SBI peer"
+        },
+        {
+          "syntax": "producers restore <nf_type> <addr>",
+          "desc": "Restore a drained SBI peer"
+        },
+        {
+          "syntax": "producers weight <nf_type> <addr> <w>",
+          "desc": "Set SBI peer weight"
+        }
+      ]
+    },
+    {
+      "title": "Observability",
+      "items": [
+        {
+          "syntax": "diameter peers",
+          "desc": "List Diameter peers"
+        },
+        {
+          "syntax": "diameter stats",
+          "desc": "Show Diameter stats"
+        }
+      ]
+    },
+    {
+      "title": "Validation & Health",
+      "items": [
+        {
+          "syntax": "validate config <file>",
+          "desc": "Validate a config file"
+        },
+        {
+          "syntax": "validate policy <file>",
+          "desc": "Validate a policy file"
+        },
+        {
+          "syntax": "health-deep",
+          "desc": "Deep health check"
+        },
+        {
+          "syntax": "metrics-summary",
+          "desc": "Metrics summary"
+        }
+      ]
+    },
+    {
+      "title": "Logging",
+      "items": [
+        {
+          "syntax": "log-level",
+          "desc": "Show current log level"
+        },
+        {
+          "syntax": "log-level set <level>",
+          "desc": "Change log level (debug|info|warn|error)"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    "fgpctl status",
+    "fgpctl -url http://fgp.svc:9091 -key $FGP_ADMIN_KEY policy",
+    "fgpctl policy-rules add @rules/block-anonymous.json",
+    "fgpctl log-level set debug"
+  ]
+}
