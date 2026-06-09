@@ -7,33 +7,33 @@ export default function DiameterS6aRelay() {
   return (
     <DocPage
       slug="tutorials/diameter-s6a-relay"
-      lede="Bring up FGP as an S6a relay between an MME and an HSS. Walks through enabling the Diameter listener, declaring the application, configuring two peers, and verifying CER/CEA exchange and routing on a live message."
+      lede="Bring up fluxgate-proxy as an S6a relay between an MME and an HSS. Walks through enabling the Diameter listener, declaring the application, configuring two peers, and verifying CER/CEA exchange and routing on a live message."
     >
       <h2 id="prereqs">Before you start</h2>
       <ul>
-        <li>FGP built (<code>make build</code>).</li>
+        <li>fluxgate-proxy built (<code>make build</code>).</li>
         <li>
-          An MME or test client that can speak S6a to a configured peer (any RFC 6733 client
-          that knows the S6a app id will do).
+          An MME or test peer that can speak S6a to a configured peer (any RFC 6733
+          implementation that knows the S6a app id will do).
         </li>
         <li>
           An HSS or HSS simulator reachable on a known address and port. For lab work an
           open-source HSS simulator is fine.
         </li>
         <li>
-          Either TCP or SCTP available between FGP and the HSS. This tutorial uses SCTP because
-          that is the typical 3GPP choice; TCP works with a one-line change.
+          Either TCP or SCTP available between the proxy and the HSS. This tutorial uses SCTP
+          because that is the typical 3GPP choice; TCP works with a one-line change.
         </li>
       </ul>
 
       <h2 id="topology">Topology</h2>
-      <pre><code>{`MME / test client            FGP                    HSS / simulator
+      <pre><code>{`MME / test peer              FGP                    HSS / simulator
   (initiator)         <-->   (both)         <-->   (initiator-side from FGP)
                               :3868                      :3868`}</code></pre>
       <p>
-        FGP listens for inbound from the MME on its <code>listen_addr</code>, and dials the HSS
-        for the outbound side. We model the HSS peer as <code>connection_mode: initiator</code>{' '}
-        (FGP dials it). The MME side is implicit — anything that connects in on the listen
+        The proxy listens for inbound from the MME on its <code>listen_addr</code>, and dials the
+        HSS for the outbound side. We model the HSS peer as <code>connection_mode: initiator</code>{' '}
+        (the proxy dials it). The MME side is implicit — anything that connects in on the listen
         address is accepted when <code>accept_undefined_peer: true</code>, or you can list MMEs
         explicitly with <code>connection_mode: responder</code>.
       </p>
@@ -50,7 +50,7 @@ server:
   listen: ":8090"
 
 admin:
-  listen: 127.0.0.1:8091
+  listen: 127.0.0.1:9091
   allow_anonymous: true
   allow_insecure: true
   default_action: allow    # turn off policy for the lab; tighten before prod
@@ -101,29 +101,29 @@ INF Diameter peer CER sent addr=aaa://10.56.56.10:3868
 INF Diameter peer CEA received addr=aaa://10.56.56.10:3868 result=DIAMETER_SUCCESS
 INF Diameter peer up addr=aaa://10.56.56.10:3868`} />
 
-      <p>If the HSS is offline, the dial fails and FGP retries on <code>reconnect_interval</code>.</p>
+      <p>If the HSS is offline, the dial fails and the proxy retries on <code>reconnect_interval</code>.</p>
 
       <h2 id="verify-peer">Verify peer state</h2>
-      <CodeBlock lang="bash" code={`./bin/fgpctl -url http://127.0.0.1:8091 diameter peers`} />
+      <CodeBlock lang="bash" code={`./bin/fgpctl -url http://127.0.0.1:9091 diameter peers`} />
 
-      <p>Expect at least one peer in <code>STATE_OPEN</code>:</p>
+      <p>
+        Each entry carries the peer <code>uri</code> and its current <code>state</code>. Expect at
+        least one peer in <code>open</code> (the operational state; other values are{' '}
+        <code>disconnected</code>, <code>connecting</code>, <code>handshaking</code>, and{' '}
+        <code>closing</code>):
+      </p>
       <CodeBlock lang="json" code={`[
   {
-    "address": "aaa://10.56.56.10:3868",
-    "origin_host": "hss.epc.example.com",
-    "origin_realm": "epc.example.com",
-    "state": "STATE_OPEN",
-    "applications": [{"app_id": 16777251, "vendor_id": 10415}],
-    "connection_mode": "initiator",
-    "watchdog_misses": 0
+    "uri": "aaa://10.56.56.10:3868",
+    "state": "open"
   }
 ]`} />
 
-      <h2 id="point-mme">Point the MME at FGP</h2>
+      <h2 id="point-mme">Point the MME at the proxy</h2>
       <p>
-        Configure the MME's S6a peer to point at FGP's <code>listen_addr</code> instead of the
-        HSS directly. The exact mechanism depends on your MME; the key fact is that the MME
-        opens an SCTP association to FGP, exchanges CER/CEA, and starts sending S6a requests.
+        Configure the MME's S6a peer to point at the proxy's <code>listen_addr</code> instead of
+        the HSS directly. The exact mechanism depends on your MME; the key fact is that the MME
+        opens an SCTP association to the proxy, exchanges CER/CEA, and starts sending S6a requests.
       </p>
 
       <h2 id="exercise">Exercise with a UE attach</h2>
@@ -131,28 +131,41 @@ INF Diameter peer up addr=aaa://10.56.56.10:3868`} />
         Trigger an attach on the MME. The S6a flow is:
       </p>
       <ol>
-        <li>MME sends <strong>AIR</strong> (Authentication-Information-Request) to FGP.</li>
-        <li>FGP runs the request through the filter chain, then forwards via the route for realm <code>epc.example.com</code> to the HSS.</li>
+        <li>MME sends <strong>AIR</strong> (Authentication-Information-Request) to the proxy.</li>
+        <li>The proxy runs the request through the filter chain, then forwards via the route for realm <code>epc.example.com</code> to the HSS.</li>
         <li>HSS replies with <strong>AIA</strong>.</li>
-        <li>FGP runs the response stage and returns the AIA to the MME.</li>
+        <li>The proxy runs the response stage and returns the AIA to the MME.</li>
         <li>MME proceeds with <strong>ULR/ULA</strong> for location update.</li>
       </ol>
 
-      <p>Check stats while the flow runs:</p>
-      <CodeBlock lang="bash" code={`./bin/fgpctl -url http://127.0.0.1:8091 diameter stats`} />
+      <p>Check the relay summary while the flow runs:</p>
+      <CodeBlock lang="bash" code={`./bin/fgpctl -url http://127.0.0.1:9091 diameter stats`} />
 
-      <p>Look for:</p>
+      <p>
+        This returns the relay's identity and live peer count — confirm <code>peer_count</code>{' '}
+        reflects the HSS (and any MMEs) that have come up:
+      </p>
+      <CodeBlock lang="json" code={`{
+  "origin_host": "fgp.epc.example.com",
+  "origin_realm": "epc.example.com",
+  "peer_count": 1
+}`} />
+
+      <p>
+        Per-message counters and latencies are exposed as Prometheus metrics on the proxy's{' '}
+        <code>/metrics</code> endpoint, not in this command. Look for these while the flow runs:
+      </p>
       <ul>
-        <li><code>requests_total</code> incrementing per AIR / ULR.</li>
-        <li><code>forward_total</code> incrementing with <code>result=success</code>.</li>
-        <li><code>forward_duration_seconds</code> histogram updated.</li>
+        <li><code>fgp_diameter_requests_total</code> incrementing per AIR / ULR.</li>
+        <li><code>fgp_diameter_forward_total</code> incrementing with <code>result=success</code>.</li>
+        <li><code>fgp_diameter_forward_duration_seconds</code> histogram updated.</li>
       </ul>
 
       <h2 id="watchdog">Watch the watchdog</h2>
       <p>
-        Periodically (default 30s) FGP sends DWR to each peer. The peer answers DWA. If
-        <code>max_missed_watchdogs</code> DWAs are missed, FGP closes the peer and reconnects.
-        Watch it happen by temporarily killing the HSS process — FGP detects the missed DWAs,
+        Periodically (default 30s) the proxy sends DWR to each peer. The peer answers DWA. If{' '}
+        <code>max_missed_watchdogs</code> DWAs are missed, the proxy closes the peer and reconnects.
+        Watch it happen by temporarily killing the HSS process — the proxy detects the missed DWAs,
         marks the peer down, and reconnects automatically when the HSS returns.
       </p>
 
@@ -173,7 +186,7 @@ INF Diameter peer up addr=aaa://10.56.56.10:3868`} />
         </li>
         <li>
           Configure realm-scoped routes if you proxy more than one application. Use{' '}
-          <code>origin_realms[]</code> if FGP is authoritative for multiple realms.
+          <code>origin_realms[]</code> if the proxy is authoritative for multiple realms.
         </li>
         <li>
           Decide whether to enable <code>duplicate_protection</code> — needed when peers

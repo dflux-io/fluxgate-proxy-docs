@@ -24,12 +24,8 @@ export default function Fgpctl() {
       <table>
         <thead><tr><th>Command</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>status</code></td><td>Proxy status, version, uptime.</td></tr>
+          <tr><td><code>status</code></td><td>Proxy status and version.</td></tr>
           <tr><td><code>policy</code></td><td>Show current full policy document.</td></tr>
-          <tr><td><code>policy versions</code></td><td>List policy versions.</td></tr>
-          <tr><td><code>policy get &lt;version&gt;</code></td><td>Get a specific policy version.</td></tr>
-          <tr><td><code>policy rollback &lt;version&gt;</code></td><td>Roll back to a policy version.</td></tr>
-          <tr><td><code>policy compare &lt;v1&gt; &lt;v2&gt;</code></td><td>Structural diff between two versions.</td></tr>
           <tr><td><code>policy update &lt;file&gt;</code></td><td>Update full policy from a JSON file.</td></tr>
         </tbody>
       </table>
@@ -111,22 +107,6 @@ export default function Fgpctl() {
         </tbody>
       </table>
 
-      <h2 id="tenants-threat">Tenants, threat, anomaly</h2>
-      <table>
-        <thead><tr><th>Command</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><code>tenants</code></td><td>List tenants.</td></tr>
-          <tr><td><code>tenants add &lt;json|@file&gt;</code></td><td>Create a tenant. 409 if PLMN already exists.</td></tr>
-          <tr><td><code>tenants update &lt;mcc&gt; &lt;mnc&gt; &lt;json|@file&gt;</code></td><td>Upsert a tenant by PLMN.</td></tr>
-          <tr><td><code>tenants delete &lt;mcc&gt; &lt;mnc&gt;</code></td><td>Delete a tenant.</td></tr>
-          <tr><td><code>tenants delete-all</code></td><td>Delete every tenant.</td></tr>
-          <tr><td><code>threat-detection</code></td><td>Show threat-detection config.</td></tr>
-          <tr><td><code>threat-detection set &lt;json|@file&gt;</code></td><td>Update threat-detection config.</td></tr>
-          <tr><td><code>anomaly-scoring</code></td><td>Show anomaly-scoring config.</td></tr>
-          <tr><td><code>anomaly-scoring set &lt;json|@file&gt;</code></td><td>Update anomaly-scoring config.</td></tr>
-        </tbody>
-      </table>
-
       <h2 id="validation-health">Validation, health, metrics</h2>
       <table>
         <thead><tr><th>Command</th><th>Description</th></tr></thead>
@@ -138,14 +118,12 @@ export default function Fgpctl() {
         </tbody>
       </table>
 
-      <h2 id="audit-log">Audit and log level</h2>
+      <h2 id="log-level">Log level</h2>
       <table>
         <thead><tr><th>Command</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>audit [--limit N]</code></td><td>Query recent audit records. Default limit 100.</td></tr>
-          <tr><td><code>audit export [--format json|csv] [--decision &lt;d&gt;] [--limit N]</code></td><td>Export audit records; filter by decision, choose format, cap rows. Default format <code>json</code>, default limit 1000.</td></tr>
           <tr><td><code>log-level</code></td><td>Show current log level.</td></tr>
-          <tr><td><code>log-level set &lt;level&gt;</code></td><td>Change log level at runtime. <code>trace</code> | <code>debug</code> | <code>info</code> | <code>warn</code> | <code>error</code>.</td></tr>
+          <tr><td><code>log-level set &lt;level&gt;</code></td><td>Change log level at runtime. <code>debug</code> | <code>info</code> | <code>warn</code> | <code>error</code>.</td></tr>
         </tbody>
       </table>
 
@@ -156,7 +134,7 @@ export default function Fgpctl() {
         anything non-trivial — quoting JSON in shell is fiddly.
       </p>
       <CodeBlock lang="bash" code={`# inline
-fgpctl policy-rules add '{"name":"allow-x","action":"allow","match":{"path_prefix":"/x"}}'
+fgpctl policy-rules add '{"name":"allow-x","action":"allow","path_patterns":["/x"]}'
 
 # from file
 fgpctl policy-rules add @allow-x.json`} />
@@ -166,13 +144,10 @@ fgpctl policy-rules add @allow-x.json`} />
 fgpctl status
 
 # Authenticated against a remote admin URL
-fgpctl -url https://fgp.svc:8091 -key "$FGP_ADMIN_KEY" policy versions
+fgpctl -url https://fgp.svc:9091 -key "$FGP_ADMIN_KEY" policy
 
 # Apply a rule from a file
 fgpctl policy-rules add @rules/block-anonymous.json
-
-# Export denials to CSV for the security team
-fgpctl audit export --format csv --decision denied --limit 500 > denies.csv
 
 # Live log-level bump while chasing an issue
 fgpctl log-level set debug

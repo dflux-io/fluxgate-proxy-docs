@@ -4,7 +4,7 @@ export default function Glossary() {
   return (
     <DocPage
       slug="glossary"
-      lede="3GPP, Diameter, and FGP-specific terminology used throughout this documentation. Glance at this page when something reads opaque; refer back when authoring rules."
+      lede="3GPP, Diameter, and fluxgate-proxy terminology used throughout this documentation. Glance at this page when something reads opaque; refer back when authoring rules."
     >
       <h2 id="terms">Terms</h2>
 
@@ -31,7 +31,7 @@ export default function Glossary() {
         <dd>5G identifier for the data network a session connects to (the LTE APN, conceptually).</dd>
 
         <dt><strong>FGP</strong> — fluxgate-proxy</dt>
-        <dd>This product.</dd>
+        <dd>Abbreviation for this product, fluxgate-proxy. Used in diagram labels and log fields; prose calls it the proxy.</dd>
 
         <dt><strong>GPSI</strong> — Generic Public Subscription Identifier</dt>
         <dd>The publicly-visible identifier for a 5G subscriber. Typically an MSISDN (<code>msisdn-…</code>).</dd>
@@ -43,7 +43,7 @@ export default function Glossary() {
         <dd>4G EPC element holding subscriber data; speaks Diameter on S6a.</dd>
 
         <dt><strong>HTTP/2</strong></dt>
-        <dd>Required transport for 5G SBI (3GPP TS 29.500). FGP serves h2c (cleartext) or HTTPS+h2.</dd>
+        <dd>Required transport for 5G SBI (3GPP TS 29.500). The proxy serves h2c (cleartext) or HTTPS+h2.</dd>
 
         <dt><strong>h2c</strong></dt>
         <dd>HTTP/2 cleartext. Used inside trusted boundaries when TLS is provided at a different layer.</dd>
@@ -55,7 +55,7 @@ export default function Glossary() {
         <dd>4G EPC element responsible for connection and mobility. Speaks Diameter on S6a toward the HSS.</dd>
 
         <dt><strong>mTLS</strong></dt>
-        <dd>Mutual TLS — both client and server present certificates. FGP supports mTLS on the SBI and admin listeners.</dd>
+        <dd>Mutual TLS — both client and server present certificates. The proxy supports mTLS on the SBI and admin listeners.</dd>
 
         <dt><strong>NEF</strong> — Network Exposure Function</dt>
         <dd>5G NF that exposes 3GPP capabilities to external applications via REST.</dd>
@@ -73,7 +73,7 @@ export default function Glossary() {
         <dd>Network Slice Selection Assistance Information. The single-slice form (S-NSSAI) is a <code>(sst, sd)</code> tuple identifying one network slice.</dd>
 
         <dt><strong>OAuth2 / JWT</strong></dt>
-        <dd>The 5G SBI access-token model (3GPP TS 33.501). FGP enforces token signature, expiry, and scope on inbound requests.</dd>
+        <dd>The 5G SBI access-token model (3GPP TS 33.501). The proxy enforces token signature, expiry, and scope on inbound requests.</dd>
 
         <dt><strong>PCEF</strong> — Policy and Charging Enforcement Function</dt>
         <dd>The point where PCC rules are enforced; typically sits in the PGW/SMF.</dd>
@@ -88,7 +88,7 @@ export default function Glossary() {
         <dd>4G EPC gateway between the operator's IP network and the public internet.</dd>
 
         <dt><strong>PLMN</strong> — Public Land Mobile Network</dt>
-        <dd>Identifier for an operator's network — <code>(MCC, MNC)</code> pair. FGP uses PLMN to resolve tenant identity.</dd>
+        <dd>Identifier for an operator's network — <code>(MCC, MNC)</code> pair. Policy and routing rules can match on <code>visited_plmns</code>.</dd>
 
         <dt><strong>Rx</strong></dt>
         <dd>Diameter application between AF and PCRF (IMS use case). App id 16777236, vendor id 10415.</dd>
@@ -100,7 +100,7 @@ export default function Glossary() {
         <dd>3GPP's term for the HTTP/2 + REST service interfaces between 5G core NFs.</dd>
 
         <dt><strong>SCTP</strong> — Stream Control Transmission Protocol</dt>
-        <dd>Transport layer protocol (RFC 4960). The typical 3GPP transport for Diameter; FGP supports both SCTP and TCP.</dd>
+        <dd>Transport layer protocol (RFC 4960). The typical 3GPP transport for Diameter; the proxy supports both SCTP and TCP.</dd>
 
         <dt><strong>SMF</strong> — Session Management Function</dt>
         <dd>5G NF responsible for session establishment and management.</dd>
@@ -121,11 +121,11 @@ export default function Glossary() {
         <dd>The end-user device — phone, modem, IoT module.</dd>
       </dl>
 
-      <h2 id="fgp-terms">FGP-specific terms</h2>
+      <h2 id="fgp-terms">fluxgate-proxy terms</h2>
 
       <dl>
         <dt><strong>Filter chain</strong></dt>
-        <dd>The ordered list of request filters (auth, policy, rate-limit, threat, anomaly, tenant, transform, audit). Atomic-swapped on hot reload.</dd>
+        <dd>The request filter chain, built in a fixed order: Auth (only when <code>oauth2_required</code>) &rarr; Policy (always) &rarr; one Rate-limit filter per <code>rate_limits[]</code> entry &rarr; Transformation (request phase). Swapped atomically on hot reload.</dd>
 
         <dt><strong>Phase</strong></dt>
         <dd>Either <code>request</code> or <code>response</code>. Transformation rules and the response stage are phase-aware.</dd>
@@ -133,23 +133,20 @@ export default function Glossary() {
         <dt><strong>Control-plane store</strong></dt>
         <dd>The database that holds rules, transforms, routes, tenants, profiles. SQLite or Postgres.</dd>
 
-        <dt><strong>Audit store</strong></dt>
-        <dd>The database that holds per-request audit records. SQLite, Postgres, or in-memory.</dd>
-
         <dt><strong>Producer pool</strong></dt>
         <dd>The in-memory list of reachable producers per NF type, populated from NRF discovery and/or static config.</dd>
 
         <dt><strong>Shadow profile</strong></dt>
-        <dd>An NRF NF profile that FGP registers on its own behalf so consumers discover the proxy instead of the real producer.</dd>
+        <dd>An NRF NF profile that the proxy registers on its own behalf so consumers discover the proxy instead of the real producer.</dd>
 
         <dt><strong>Connection mode</strong></dt>
         <dd>Per-peer Diameter setting: <code>initiator</code> / <code>responder</code> / <code>both</code>. Replaces the legacy <code>diameter.mode</code> field.</dd>
 
         <dt><strong>Sticky session</strong></dt>
-        <dd>Routing target flag that consistent-hashes the SUPI to pick a target, keeping the same subscriber on the same producer.</dd>
+        <dd>Routing-target option that consistent-hashes a configurable key (<code>sticky_key</code>: one of <code>supi</code>, <code>gpsi</code>, <code>imsi</code>, <code>session_id</code>, <code>origin_host</code>, or <code>request_id</code>) to pin a subscriber to the same producer for the duration of <code>sticky_ttl</code>.</dd>
 
         <dt><strong>Dry-run</strong></dt>
-        <dd>Endpoint that applies a candidate rule to a sample request without committing it, used for transformation rule validation.</dd>
+        <dd>A read-only validation endpoint that checks a candidate config or Diameter dictionary without committing it.</dd>
       </dl>
     </DocPage>
   );

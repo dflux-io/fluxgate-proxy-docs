@@ -7,7 +7,7 @@ export default function DiameterPeering() {
   return (
     <DocPage
       slug="concepts/diameter-peering"
-      lede="Diameter (RFC 6733) has no client/server concept — every node is a peer, and every connection has an Initiator (sent CER) and a Responder (sent CEA). FGP exposes this directly with a per-peer connection_mode field that says whether FGP dials, accepts, or both."
+      lede="Diameter (RFC 6733) has no client/server concept — every node is a peer, and every connection has an Initiator (sent CER) and a Responder (sent CEA). fluxgate-proxy exposes this directly with a per-peer connection_mode field that says whether the proxy dials, accepts, or both."
     >
       <h2 id="connection-modes">Connection modes</h2>
       <p>
@@ -30,13 +30,13 @@ export default function DiameterPeering() {
             <td><code>initiator</code> <em>(default)</em></td>
             <td>yes</td>
             <td>only via the listener (if <code>listen_addr</code> set)</td>
-            <td>FGP dials an upstream HSS or PCRF</td>
+            <td>The proxy dials a producer HSS or PCRF</td>
           </tr>
           <tr>
             <td><code>responder</code></td>
             <td><strong>no</strong></td>
             <td>yes (requires <code>listen_addr</code>)</td>
-            <td>Downstream peers connect <em>to</em> FGP</td>
+            <td>Other peers connect <em>to</em> the proxy</td>
           </tr>
           <tr>
             <td><code>both</code></td>
@@ -126,7 +126,7 @@ export default function DiameterPeering() {
       </ul>
 
       <h2 id="timers-and-watchdog">Timers and watchdog</h2>
-      <p>FGP carries an explicit set of timers:</p>
+      <p>The proxy carries an explicit set of timers:</p>
       <ul>
         <li><code>timers.cea_timeout</code> — CER/CEA capabilities-exchange timeout (default 10s).</li>
         <li><code>timers.dwa_timeout</code> — DWR/DWA device-watchdog answer timeout (default 10s).</li>
@@ -134,7 +134,7 @@ export default function DiameterPeering() {
         <li><code>watchdog_interval</code> — DWR send cadence.</li>
         <li><code>reconnect_interval</code> — delay before reconnecting a dropped peer.</li>
         <li><code>max_missed_watchdogs</code> — close the peer after this many missed DWA answers.</li>
-        <li><code>request_timeout</code> — upper bound on how long the relay waits for an upstream answer (default 10s).</li>
+        <li><code>request_timeout</code> — upper bound on how long the relay waits for a producer answer (default 10s).</li>
       </ul>
 
       <h2 id="duplicate-protection">Duplicate protection</h2>
@@ -161,7 +161,7 @@ export default function DiameterPeering() {
         <li><strong>Rx</strong> — app id <code>16777236</code>, vendor id <code>10415</code>, auth.</li>
       </ul>
 
-      <h2 id="related">Related</h2>
+      <h2 id="related">Where to go next</h2>
       <ul>
         <li><Link to="/reference/config-schema">Config schema</Link> — full <code>diameter</code> block.</li>
         <li><Link to="/api/producers-and-profiles">Admin API → Producers and profiles</Link> — peer status.</li>

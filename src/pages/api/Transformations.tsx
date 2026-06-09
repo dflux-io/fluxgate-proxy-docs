@@ -8,82 +8,104 @@ export default function Transformations() {
   return (
     <DocPage
       slug="api/transformations"
-      lede="CRUD for transformation rules plus a dry-run endpoint that lets you test a candidate rule against a sample request before committing it. See Transformation schema for the rule shape."
+      lede="Manage transformation rules through the unified rules surface. See Transformation schema for the rule shape."
     >
+      <p>
+        All examples assume the <code>X-Admin-Key</code> header and base URL from{' '}
+        <Link to="/api/overview">the admin API overview</Link>. Every write here is hot-reloaded —
+        no restart, no dropped requests; see <Link to="/api/overview">the overview</Link> for the
+        hot-reload guarantee.
+      </p>
+
+      <p>
+        Transformation rules are one of four rule types served by a single CRUD surface at{' '}
+        <code>/admin/rules</code>. The type is carried as a <code>type</code> discriminator on each
+        rule body and as a <code>?type=</code> filter on list. Rule names are globally unique across
+        all four types, so a single name resolves to exactly one rule regardless of type.
+      </p>
+
       <h2 id="endpoints">Endpoints</h2>
 
-      <p><HttpMethod method="GET" /> <code>/admin/transformations</code></p>
-      <p>Lists all transformation rules across both phases.</p>
-
-      <p><HttpMethod method="POST" /> <code>/admin/transformations</code></p>
-      <p>Creates a transformation rule. 409 if a rule by that name exists.</p>
-
-      <p><HttpMethod method="GET" /> <code>/admin/transformations/{`{name}`}</code></p>
-      <p>Returns one transformation rule.</p>
-
-      <p><HttpMethod method="PUT" /> <code>/admin/transformations/{`{name}`}</code></p>
-      <p>Updates a transformation rule. Upsert.</p>
-
-      <p><HttpMethod method="DELETE" /> <code>/admin/transformations/{`{name}`}</code></p>
-      <p>Deletes a transformation rule. Idempotent.</p>
-
-      <h2 id="dry-run">Dry-run</h2>
-      <p><HttpMethod method="POST" /> <code>/admin/transformations/dry-run</code></p>
+      <p><HttpMethod method="GET" /> <code>/admin/rules?type=transformation</code></p>
       <p>
-        Takes a candidate rule and a sample request, applies the rule, and returns the
-        resulting request — without persisting the rule. Use this to test regex substitutions
-        and JSON Pointer paths before pushing to the data path.
+        Lists transformation rules across both phases. Omit the filter to list every rule type
+        interleaved; each entry carries its own <code>type</code>.
+      </p>
+
+      <p><HttpMethod method="POST" /> <code>/admin/rules</code></p>
+      <p>
+        Creates a rule. The body must set <code>{`"type": "transformation"`}</code>. Returns 409 if a
+        rule by that name already exists as any type.
+      </p>
+
+      <p><HttpMethod method="GET" /> <code>/admin/rules/{`{name}`}</code></p>
+      <p>Returns one rule by name, resolved across all rule types.</p>
+
+      <p><HttpMethod method="PUT" /> <code>/admin/rules/{`{name}`}</code></p>
+      <p>
+        Updates a rule. If the body declares a <code>type</code>, it must match the stored rule's
+        type — a PUT cannot reassign a rule from one type to another.
+      </p>
+
+      <p><HttpMethod method="DELETE" /> <code>/admin/rules/{`{name}`}</code></p>
+      <p>Deletes a rule by name.</p>
+
+      <h2 id="rule-shape">Rule shape</h2>
+      <p>
+        A transformation rule has a flat <code>condition</code> block (the shared request matchers), a
+        single <code>action</code>, and a typed <code>config</code> object whose fields depend on the
+        action. The example below masks the <code>gpsi</code> body field on UDM SDM traffic:
       </p>
 
       <CodeBlock lang="json" code={`{
-  "rule": {
-    "name": "mask-gpsi",
-    "phase": "request",
-    "priority": 100,
-    "match": {"nf_type": "UDM", "path_prefix": "/nudm-sdm/v2/"},
-    "ops": [{"op": "mask_body", "path": "/gpsi", "value": "REDACTED"}]
+  "type": "transformation",
+  "name": "mask-gpsi",
+  "enabled": true,
+  "phase": "request",
+  "priority": 100,
+  "condition": {
+    "target_nf_types": ["UDM"],
+    "path_patterns": ["/nudm-sdm/v2/*"]
   },
-  "request": {
-    "method": "PATCH",
-    "path": "/nudm-sdm/v2/imsi-001010000000001/sm-data",
-    "headers": {"Content-Type": "application/json"},
-    "body": {"gpsi": "msisdn-15551234567", "snssai": {"sst": 1}}
+  "action": "body_field_mask",
+  "config": {
+    "field_path": "/gpsi",
+    "mask_value": "REDACTED"
   }
 }`} />
 
-      <p>Response includes the transformed request and any per-op diagnostics:</p>
-      <CodeBlock lang="json" code={`{
-  "transformed": {
-    "method": "PATCH",
-    "path": "/nudm-sdm/v2/imsi-001010000000001/sm-data",
-    "headers": {"Content-Type": "application/json"},
-    "body": {"gpsi": "REDACTED", "snssai": {"sst": 1}}
-  },
-  "ops_applied": ["mask_body:/gpsi"],
-  "warnings": []
-}`} />
+      <p>
+        Valid <code>action</code> values: <code>header_set</code>, <code>header_add</code>,{' '}
+        <code>header_remove</code>, <code>header_rewrite</code>, <code>body_field_set</code>,{' '}
+        <code>body_field_remove</code>, <code>body_field_mask</code>, <code>body_field_map</code>,{' '}
+        <code>status_rewrite</code>, <code>error_normalize</code>, and the Diameter AVP actions{' '}
+        <code>avp_set</code>, <code>avp_add</code>, <code>avp_remove</code>, <code>avp_rewrite</code>,{' '}
+        <code>avp_mask</code>. See <Link to="/reference/transformation-schema">Transformation schema</Link>{' '}
+        for each action's <code>config</code> fields.
+      </p>
 
-      <Callout type="tip" title="Dry-run is the safe iteration loop">
-        Regex and JSON Pointer typos make it through plain validation but fail on real traffic.
-        Always dry-run the rule against a representative request before applying.
+      <Callout type="tip" title="Validate before the data path">
+        The typed POST/PUT validates the rule — its regex patterns, JSON Pointer paths, and
+        action/config consistency — before it is persisted and hot-reloaded. Iterate against a
+        non-production proxy when shaping a new rule.
       </Callout>
 
       <h2 id="examples">Examples</h2>
-      <CodeBlock lang="bash" code={`# list
+      <CodeBlock lang="bash" code={`# list transformation rules
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" \\
-  https://fgp.svc:8091/admin/transformations | jq
+  https://fgp.svc:9091/admin/rules?type=transformation | jq
 
-# dry-run a candidate rule
+# create a rule
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" -H "Content-Type: application/json" \\
-  -X POST https://fgp.svc:8091/admin/transformations/dry-run \\
+  -X POST https://fgp.svc:9091/admin/rules \\
   -d @candidate.json | jq
 
-# apply
+# update it
 curl -sH "X-Admin-Key: $FGP_ADMIN_KEY" -H "Content-Type: application/json" \\
-  -X POST https://fgp.svc:8091/admin/transformations \\
+  -X PUT https://fgp.svc:9091/admin/rules/mask-gpsi \\
   -d @candidate.json`} />
 
-      <h2 id="related">Related</h2>
+      <h2 id="related">Where to go next</h2>
       <ul>
         <li><Link to="/concepts/transformation-engine">Transformation engine</Link>.</li>
         <li><Link to="/reference/transformation-schema">Transformation schema</Link>.</li>

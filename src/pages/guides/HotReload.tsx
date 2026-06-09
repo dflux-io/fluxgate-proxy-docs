@@ -6,14 +6,14 @@ export default function HotReload() {
   return (
     <DocPage
       slug="guides/hot-reload-and-runtime-ops"
-      lede="Most operational changes to FGP take effect without restarting the daemon. This guide spells out exactly what's hot-reloadable, what isn't, and the runtime ops you can perform — drain a producer, change log level, validate a config — without a redeploy."
+      lede="Most operational changes to the proxy take effect without restarting the daemon. This guide spells out exactly what's hot-reloadable, what isn't, and the runtime ops you can perform — drain a producer, change log level, validate a config — without a redeploy."
     >
       <h2 id="mechanism">The mechanism</h2>
       <p>
-        FGP holds the request and response filter chains in <code>atomic.Pointer[T]</code>{' '}
-        fields. When the control-plane-store watcher detects a change (default poll interval
-        5s), the proxy builds a fresh chain off the request path and atomic-swaps it in. No
-        per-request lock, no draining of in-flight requests, no dropped connections.
+        The proxy holds the request and response filter chains behind atomic pointers. When the
+        control-plane-store watcher detects a change (default poll interval 5s), the proxy builds a
+        fresh chain off the request path and atomically swaps it in. No per-request lock, no draining
+        of in-flight requests, no dropped connections.
       </p>
 
       <h2 id="hot-reloadable">Hot-reloadable (no restart)</h2>
@@ -26,8 +26,6 @@ export default function HotReload() {
           <tr><td>Rate-limit rules</td><td>same</td></tr>
           <tr><td>Transformation rules</td><td>same</td></tr>
           <tr><td>Routing rules</td><td>same</td></tr>
-          <tr><td>Tenants</td><td>same</td></tr>
-          <tr><td>Anomaly scoring and threat-detection config</td><td>same</td></tr>
           <tr><td>Producer pool — drain / restore / weight</td><td>direct admin endpoint; takes effect on next request</td></tr>
           <tr><td>Producer configs (persistent)</td><td>store → next watcher tick</td></tr>
           <tr><td>Log level</td><td><code>PUT /admin/log-level</code>; immediate</td></tr>
@@ -36,9 +34,10 @@ export default function HotReload() {
       </table>
 
       <Callout type="tip" title="Watch your fingertips">
-        Every hot-reloadable mutation lands in the admin audit log with the operator identity.
-        A "the rule disappeared" incident is almost always something explainable — check the
-        admin audit log first.
+        Every hot-reloadable mutation is applied the moment the watcher ticks, with no
+        confirmation step. A "the rule disappeared" incident is almost always an earlier admin
+        mutation — the proxy logs each applied change as a structured JSON line, so grep the
+        decision log to see what changed and when.
       </Callout>
 
       <h2 id="restart-required">Requires restart</h2>

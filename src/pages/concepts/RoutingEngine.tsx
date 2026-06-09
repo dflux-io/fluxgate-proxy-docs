@@ -10,90 +10,134 @@ export default function RoutingEngine() {
     >
       <h2 id="when-routing-runs">When routing runs</h2>
       <p>
-        Routing runs <em>after</em> the request filter chain returns "allow". On SBI, the engine
-        calls <code>RoutingEngine.Resolve</code> to pick a target producer. On Diameter, it
-        calls <code>RoutingEngine.ResolveWithFailover</code>, which retries on the next peer
-        for the same realm if the first peer fails.
+        Routing runs <em>after</em> the request filter chain returns "allow". The engine
+        evaluates the configured routing rules in priority order, resolves the matched rule's
+        target to a single producer (SBI) or Diameter peer, and hands the request to the
+        forwarder. A routing rule may also carry a failover producer list that the forwarder
+        falls back to if the primary attempt fails — see <a href="#failover">Failover</a>.
       </p>
 
       <h2 id="match-conditions">Match conditions</h2>
-      <p>A routing rule's match block can constrain on:</p>
+      <p>A routing rule's <code>condition</code> block can constrain on:</p>
       <ul>
-        <li><strong>Path</strong> and <strong>method</strong> for SBI.</li>
-        <li><strong>NF type</strong> — route only requests targeting a particular NF.</li>
         <li>
-          <strong>SUPI range</strong> — route by subscriber identity prefix or numeric range.
-          Useful for sending a tenant's subscribers to a dedicated UDM cluster.
+          <strong>Path patterns</strong> (<code>path_patterns</code>) and{' '}
+          <strong>methods</strong> for SBI.
         </li>
         <li>
-          <strong>Time window</strong> — route only during a window (e.g., maintenance window,
-          off-peak hours, regional outage).
+          <strong>NF type</strong> — <code>target_nf_types</code> /{' '}
+          <code>source_nf_types</code> to route by the requesting or destination NF.
         </li>
-        <li><strong>Tenant</strong> — route by resolved tenant identity.</li>
-        <li><strong>AVP matcher</strong> — for Diameter, match on AVP values.</li>
+        <li>
+          <strong>SUPI range</strong> (<code>supi_ranges</code>) — route by subscriber identity
+          range. Useful for sending a slice of subscribers to a dedicated UDM cluster.
+        </li>
+        <li>
+          <strong>Slice and DNN</strong> — <code>snssais</code>, <code>dnns</code>,{' '}
+          <code>visited_plmns</code>, and <code>api_versions</code>.
+        </li>
+        <li>
+          <strong>Header and body match</strong> — <code>header_match</code> and{' '}
+          <code>body_field_match</code> for content-based routing.
+        </li>
+        <li>
+          <strong>Time window</strong> (<code>time_windows</code>) — match only during a window
+          (e.g., a maintenance window or off-peak hours).
+        </li>
+        <li>
+          <strong>Diameter matchers</strong> — <code>diameter_apps</code>,{' '}
+          <code>command_codes</code>, origin/destination realms and hosts, and{' '}
+          <code>imsi_ranges</code>.
+        </li>
       </ul>
 
       <h2 id="targets">Targets</h2>
-      <p>A rule resolves to one or more targets. A target carries:</p>
+      <p>A matched rule's <code>target</code> resolves to a single producer. A target can carry:</p>
       <ul>
-        <li><strong>Address</strong> — the producer URL or Diameter peer address.</li>
         <li>
-          <strong>Weight</strong> — how often this target is selected relative to others on the
-          same rule. Set to <code>0</code> to drain without removing.
+          <strong><code>nf_type</code></strong> — when set without explicit producers, the
+          request falls through to the producer pool for that NF type.
         </li>
-        <li><strong>Sticky session</strong> flag — see below.</li>
+        <li>
+          <strong><code>producers</code></strong> — an explicit list of producer addresses, each
+          with an optional <code>weight</code> for weighted-random selection.
+        </li>
+        <li>
+          <strong><code>weighted_targets</code></strong> — a percentage split for canary and
+          blue/green rollouts — see below.
+        </li>
+        <li>
+          <strong><code>sticky_key</code></strong> / <strong><code>sticky_ttl</code></strong> —
+          session affinity — see <a href="#sticky-sessions">Sticky sessions</a>.
+        </li>
+        <li>
+          <strong><code>failover</code></strong> — a fallback producer list — see{' '}
+          <a href="#failover">Failover</a>.
+        </li>
       </ul>
 
       <h2 id="weighted-targets">Weighted targets</h2>
       <p>
-        When a rule has multiple targets, FGP selects one weighted-randomly per request. Common
+        When a target lists <code>weighted_targets</code>, the proxy selects one address per
+        request, weighted-randomly by the percentage on each entry. Each weight is{' '}
+        <code>1</code>–<code>100</code> and the set must sum to <code>100</code>. Common
         patterns:
       </p>
       <ul>
         <li>
-          <strong>Canary:</strong> 95 / 5 split between the production target and the canary
+          <strong>Canary:</strong> a 95 / 5 split between the production target and the canary
           target.
         </li>
         <li>
-          <strong>Blue/green:</strong> 100 / 0 today, 0 / 100 after cutover — weight changes
-          hot-reload, no restart.
-        </li>
-        <li>
-          <strong>Drain:</strong> set a target's weight to <code>0</code> to stop new traffic
-          without removing the entry, then restore later.
+          <strong>Blue/green:</strong> shift the split toward the new target over successive
+          edits, e.g. 90 / 10 then 50 / 50 then 10 / 90. Weight changes hot-reload, no restart.
         </li>
       </ul>
+      <Callout type="note" title="Draining a producer is a separate operation">
+        Weighted-target weights cannot be set to <code>0</code> (validation requires each weight
+        in <code>1</code>–<code>100</code>). To take a producer out of rotation, use the
+        producer-pool drain operation on the admin API rather than zeroing a routing weight —
+        see <Link to="/api/producers-and-profiles">Admin API → Producers and profiles</Link>.
+      </Callout>
 
       <h2 id="sticky-sessions">Sticky sessions</h2>
       <p>
         For workloads where the same subscriber must keep landing on the same producer (session
-        state, idempotency tokens), enable the sticky-session flag on the target. FGP keys on
-        the request's SUPI and uses consistent hashing to pick a target, so the same SUPI maps
-        to the same producer until the target is drained or weights change.
+        state, idempotency tokens), set <code>sticky_key</code> on the target together with a{' '}
+        <code>sticky_ttl</code>. The sticky key is configurable — one of <code>supi</code>,{' '}
+        <code>gpsi</code>, <code>imsi</code>, <code>session_id</code>, <code>origin_host</code>,
+        or <code>request_id</code>. On the first request for a given key value, the engine picks
+        a producer normally and caches that producer under the key value; subsequent requests
+        with the same value reuse the cached producer until the entry expires.
       </p>
 
-      <Callout type="note" title="Sticky sessions are best-effort">
-        Consistent hashing keeps the mapping stable while the target set is stable. Adding or
-        removing a target reshuffles a fraction of the keys. If you must avoid any reshuffling
-        during a deploy, drain weight-to-zero first, let in-flight sessions complete, then
-        remove.
+      <Callout type="note" title="Stickiness is a TTL cache">
+        The mapping is a per-key TTL cache, not consistent hashing. An entry lives for{' '}
+        <code>sticky_ttl</code> after it is set, then expires and the next request re-resolves a
+        producer. Sticky lookups bypass the primary/failover path for the duration of the TTL.
       </Callout>
 
-      <h2 id="diameter-failover">Diameter realm failover</h2>
+      <h2 id="failover">Failover</h2>
       <p>
-        Diameter routes work by realm: each route lists application ids and a peer set for a
-        named realm. When forwarding, FGP picks the highest-priority reachable peer in the
-        realm. On failure, <code>ResolveWithFailover</code> tries the next peer. Watchdog state
-        (DWA / DPA) feeds the reachable-peer set in real time — a peer that misses too many
-        watchdogs drops out of routing automatically.
+        A routing rule's <code>target.failover</code> carries an ordered list of fallback
+        producers. When the primary attempt fails, the forwarder retries against those producers
+        in order, bounded by <code>max_retries</code>. This applies to both SBI and Diameter and
+        is independent of Diameter realm-peer selection performed by the relay.
+      </p>
+      <p>
+        Failover triggers on more than transport failure. The default is transport-only, but a
+        failover target can also retry on application-level responses: <code>trigger_on_status</code>{' '}
+        lists HTTP status codes (SBI) and <code>trigger_on_result_code</code> lists Diameter
+        Result-Code / Experimental-Result-Code values that should be treated as a retryable
+        failure.
       </p>
 
       <h2 id="evaluation-order">Rule evaluation order</h2>
       <p>
-        Routing rules are evaluated in order; the first matching rule wins. If no rule matches,
-        FGP falls back to the producer pool (NRF-discovered producers for the request's NF
-        type, weighted by their NRF profile). If neither produces a target, the request is
-        rejected with the appropriate protocol-level error.
+        Routing rules are evaluated in priority order; the first matching rule wins. If no rule
+        matches, the proxy falls back to the producer pool (NRF-discovered producers for the
+        request's NF type, weighted by their NRF profile). If neither produces a target, the
+        request is rejected with the appropriate protocol-level error.
       </p>
 
       <h2 id="related">Related</h2>

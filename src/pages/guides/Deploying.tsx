@@ -7,12 +7,12 @@ export default function Deploying() {
   return (
     <DocPage
       slug="guides/deploying"
-      lede="FGP ships as a single statically linked Go binary plus an admin CLI. This guide covers the file layout, a systemd unit, a container image, and how to wire persistence so config and audit survive restarts."
+      lede="fluxgate-proxy ships as a single statically linked Go binary plus an admin CLI. This guide covers the file layout, a systemd unit, a container image, and how to wire persistence so configuration survives restarts."
     >
       <h2 id="binaries">The binaries</h2>
       <ul>
         <li><code>fgp</code> — the daemon. Reads a config file and serves SBI / Diameter / admin.</li>
-        <li><code>fgpctl</code> — the admin client. Talks to the daemon's admin API over HTTP.</li>
+        <li><code>fgpctl</code> — the admin client. Talks to the daemon's admin API over HTTP (default <code>http://127.0.0.1:9091</code>).</li>
       </ul>
       <p>Build with the Makefile:</p>
       <CodeBlock lang="bash" code={`make build
@@ -37,7 +37,6 @@ go build -o bin/fgpctl ./cmd/fgpctl`} />
     ca.crt
 /var/lib/fgp/
   control-plane.db      # SQLite control-plane store
-  audit.db              # SQLite audit store
 /var/log/fgp/
   fgp.log               # rotated by logrotate`} />
 
@@ -88,7 +87,7 @@ sudo journalctl -u fgp -f`} />
       <p>A two-stage Dockerfile keeps the final image small:</p>
       <CodeBlock lang="dockerfile" code={`# syntax=docker/dockerfile:1.7
 
-FROM golang:1.25-bookworm AS builder
+FROM golang:1.26-bookworm AS builder
 WORKDIR /src
 COPY . .
 RUN make build
@@ -97,7 +96,7 @@ FROM gcr.io/distroless/base-debian12:nonroot
 COPY --from=builder /src/bin/fgp /usr/local/bin/fgp
 COPY --from=builder /src/bin/fgpctl /usr/local/bin/fgpctl
 USER nonroot:nonroot
-EXPOSE 8090 8091 3868
+EXPOSE 8090 9091 3868
 ENTRYPOINT ["/usr/local/bin/fgp"]
 CMD ["-config", "/etc/fgp/fgp.yaml", "-json"]`} />
 
@@ -105,35 +104,29 @@ CMD ["-config", "/etc/fgp/fgp.yaml", "-json"]`} />
       <CodeBlock lang="bash" code={`docker run --rm \\
   -v /etc/fgp:/etc/fgp:ro \\
   -v /var/lib/fgp:/var/lib/fgp \\
-  -p 8090:8090 -p 8091:8091 -p 3868:3868 \\
+  -p 8090:8090 -p 9091:9091 -p 3868:3868 \\
   fgp:latest`} />
 
       <h2 id="persistence">Persistence</h2>
-      <p>FGP has two stores; both default to ephemeral in the minimal config.</p>
-
-      <h3 id="control-plane-store">Control-plane store</h3>
       <p>
-        Holds policy rules, rate limits, transformations, routing rules, tenants, producer
-        configs, NRF profiles. Without persistence, rules vanish on restart.
+        The proxy keeps one persistent store: the control-plane store. It holds policy rules,
+        rate-limit rules, transformation rules, routing rules, producer configs, and NRF
+        profiles. It defaults to an in-memory SQLite database, so rules vanish on restart
+        unless you point it at a file or a database. Wire it up with a file-backed SQLite DSN:
       </p>
       <CodeBlock lang="yaml" code={`storage:
   control_plane_db:
     driver: sqlite
     dsn: file:/var/lib/fgp/control-plane.db?cache=shared&_journal_mode=WAL`} />
 
-      <h3 id="audit-store">Audit store</h3>
-      <p>
-        Holds the per-request audit trail. Without persistence, audit history disappears on
-        restart. SQLite is fine for a single host; PostgreSQL is required if multiple FGPs
-        share state.
-      </p>
-      <CodeBlock lang="yaml" code={`storage:
-  audit:
-    driver: sqlite
-    dsn: file:/var/lib/fgp/audit.db?cache=shared&_journal_mode=WAL`} />
+      <p>You can set the same values from the CLI overlay instead of the config file:</p>
+      <CodeBlock lang="bash" code={`./bin/fgp -config /etc/fgp/fgp.yaml \\
+  -db-driver sqlite \\
+  -db-dsn "file:/var/lib/fgp/control-plane.db?cache=shared&_journal_mode=WAL"`} />
 
       <p>
-        Postgres is identical except for the driver and DSN. See{' '}
+        PostgreSQL is identical except for the driver and DSN, and is required when multiple
+        instances of the proxy share state. See{' '}
         <Link to="/guides/using-postgres">Using PostgreSQL</Link>.
       </p>
 
@@ -165,7 +158,7 @@ CMD ["-config", "/etc/fgp/fgp.yaml", "-json"]`} />
 
       <h2 id="print-config">Print the resolved config</h2>
       <p>
-        Before pushing a new config, dump what FGP will actually use after env interpolation,
+        Before pushing a new config, dump what the proxy will actually use after env interpolation,
         <code>_file:</code> dereferencing, and overlay:
       </p>
       <CodeBlock lang="bash" code={`./bin/fgp -config /etc/fgp/fgp.yaml -print-config -print-config-format yaml`} />
@@ -175,13 +168,14 @@ CMD ["-config", "/etc/fgp/fgp.yaml", "-json"]`} />
       <h2 id="health">Health checks</h2>
       <ul>
         <li>
-          <strong>Liveness:</strong> a TCP probe on the SBI listen address is enough — FGP
-          listens before serving requests.
+          <strong>Liveness:</strong> a TCP probe on the SBI listen address is enough — the
+          proxy listens before serving requests.
         </li>
         <li>
-          <strong>Readiness:</strong> hit <code>GET /admin/health/deep</code> for a
-          producer-pool reachability check. Returns 200 only when at least one producer per
-          configured NF type is reachable.
+          <strong>Readiness:</strong> hit <code>GET /admin/health/deep</code> on the admin
+          API. It probes three subsystems — whether any producers are configured, the
+          control-plane store, and the Diameter relay — and returns 503 if any check fails,
+          200 otherwise.
         </li>
       </ul>
 

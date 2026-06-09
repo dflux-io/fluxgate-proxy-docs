@@ -3,32 +3,53 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
- * Islands palette — black canvas with floating panels, blue accent.
+ * Geist palette — pure-neutral grays, blue accent, structure from 1px
+ * hairlines rather than shadows. Dark default; light via [data-theme='light'].
+ * Token NAMES are stable (every component/page references them); only the
+ * values change between themes.
+ *   --surface        page canvas / body
+ *   --surface-muted  panels: code, callouts, cards, mermaid, hero
+ *   --surface-subtle hover / active rows
+ *   --surface-border hairline borders
+ *   --border-strong  emphasised hairline (table rules, inputs)
+ *   --ink / -muted / -subtle   text from primary -> faint
+ *   --accent / -hover / -subtle / -fg   Geist blue
  * ------------------------------------------------------------------------ */
 
 :root,
 [data-theme='dark'] {
-  --surface: 10 10 11;          /* #0a0a0b */
-  --surface-muted: 19 18 23;    /* #131217 */
-  --surface-subtle: 26 26 31;   /* #1a1a1f */
-  --surface-border: 42 42 48;   /* #2a2a30 */
-  --ink: 237 237 240;
-  --ink-muted: 161 161 170;
-  --ink-subtle: 113 113 122;
-  --accent: 59 130 246;         /* blue-500 */
+  --surface: 10 10 10;          /* #0a0a0a  near-black canvas */
+  --surface-muted: 17 17 17;    /* #111111  panels             */
+  --surface-subtle: 26 26 26;   /* #1a1a1a  hover              */
+  --surface-border: 42 42 42;   /* #2a2a2a  hairline           */
+  --border-strong: 56 56 56;    /* #383838                     */
+  --ink: 237 237 237;           /* #ededed */
+  --ink-muted: 161 161 161;     /* #a1a1a1 */
+  --ink-subtle: 112 112 112;    /* #707070 */
+  --accent: 52 145 255;         /* #3491ff  blue lifts in dark for AA */
+  --accent-hover: 82 162 255;   /* #52a2ff */
+  --accent-subtle: 13 27 42;    /* #0d1b2a  blue-tinted callout bg */
   --accent-fg: 255 255 255;
 }
 
 [data-theme='light'] {
-  --surface: 255 255 255;
-  --surface-muted: 250 250 250;
-  --surface-subtle: 244 244 245;
-  --surface-border: 228 228 231;
-  --ink: 24 24 27;
-  --ink-muted: 82 82 91;
-  --ink-subtle: 161 161 170;
-  --accent: 37 99 235;          /* blue-600 */
+  --surface: 255 255 255;       /* #ffffff  white canvas       */
+  --surface-muted: 247 247 247; /* #f7f7f7  gray-100 panels    */
+  --surface-subtle: 237 237 237;/* #ededed  gray-200 hover     */
+  --surface-border: 235 235 235;/* #ebebeb  hairline           */
+  --border-strong: 212 212 212; /* #d4d4d4  gray-300           */
+  --ink: 23 23 23;              /* #171717 */
+  --ink-muted: 82 82 82;        /* #525252 */
+  --ink-subtle: 115 115 115;    /* #737373 */
+  --accent: 0 112 243;          /* #0070f3  Geist blue         */
+  --accent-hover: 16 87 234;    /* #1057ea */
+  --accent-subtle: 240 247 255; /* #f0f7ff  blue-100 callout bg */
   --accent-fg: 255 255 255;
+}
+
+:root {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
 }
 
 html,
@@ -40,17 +61,28 @@ body,
 body {
   background: rgb(var(--surface));
   color: rgb(var(--ink));
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+  font-optical-sizing: auto;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
-  font-family:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
-/* Floating-panel glow — only visible against the dark canvas. */
+code, pre, kbd, samp, .font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'ss01', 'zero';
+}
+
+/* Tighten large headings the way Geist does. */
+h1, h2 { letter-spacing: -0.02em; }
+
+/* Structure comes from hairlines, not shadows. Keep only a whisper of an
+ * inset edge so floating panels read against the near-black canvas. */
 [data-theme='dark'] .panel-glow {
   box-shadow:
-    inset 1px 1px 0 0 rgb(255 255 255 / 0.04),
-    inset -1px -1px 0 0 rgb(0 0 0 / 0.2);
+    inset 1px 1px 0 0 rgb(255 255 255 / 0.03),
+    inset -1px -1px 0 0 rgb(0 0 0 / 0.25);
 }
 
 /* ---------------------------------------------------------------------------
@@ -112,3 +144,48 @@ h4:hover .heading-anchor { opacity: 1; }
   border-radius: 4px;
 }
 [data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: rgb(var(--ink-subtle)); }
+
+/* ---------------------------------------------------------------------------
+ * Motion — a restrained content entrance on each route. The article carries
+ * .doc-content and is keyed by route in DocPage, so it remounts and re-runs
+ * this stagger on every navigation. Travel ≤8px, total ≤320ms, ease-out-expo.
+ * ------------------------------------------------------------------------ */
+
+.doc-content { view-transition-name: doc-content; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .doc-content { animation: doc-fade 240ms ease both; }
+  .doc-content > * { animation: doc-rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .doc-content > *:nth-child(1) { animation-delay: 0ms; }
+  .doc-content > *:nth-child(2) { animation-delay: 35ms; }
+  .doc-content > *:nth-child(3) { animation-delay: 70ms; }
+  .doc-content > *:nth-child(4) { animation-delay: 100ms; }
+  .doc-content > *:nth-child(n + 5) { animation-delay: 125ms; }
+}
+
+@keyframes doc-fade { from { opacity: 0; } }
+@keyframes doc-rise { from { opacity: 0; transform: translateY(8px); } }
+
+/* View Transitions cross-fade (when the router/browser supports it) — scoped
+ * to the content region so the fixed chrome stays put. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(doc-content) { animation: doc-vt-out 120ms ease both; }
+  ::view-transition-new(doc-content) { animation: doc-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+}
+@keyframes doc-vt-out { to { opacity: 0; } }
+
+/* Honour reduced-motion everywhere: kill entrance + view-transition motion. */
+@media (prefers-reduced-motion: reduce) {
+  .doc-content,
+  .doc-content > * { animation: none !important; }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* Light-mode scrollbar — match the hairline treatment. */
+[data-theme='light'] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-strong)) transparent;
+}

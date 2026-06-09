@@ -7,78 +7,91 @@ export default function RateLimiting() {
   return (
     <DocPage
       slug="guides/rate-limiting"
-      lede="FGP rate-limits with token buckets keyed by consumer identity, SUPI, NF type, or a combination. Limits are first-class rules in the control plane: write them as JSON, hot-reload, observe via Prometheus, and tune from the audit trail."
+      lede="fluxgate-proxy rate-limits with token buckets keyed by source NF type, subscriber SUPI, or a Diameter dimension. Rate-limit rules are first-class entries in the control-plane store: write them as JSON, hot-reload, and watch denials through Prometheus and the structured decision logs."
     >
       <h2 id="model">The token-bucket model</h2>
-      <p>Each rate-limit rule is a token bucket with three knobs:</p>
+      <p>Each rate-limit rule is a token bucket with two rate knobs plus a key:</p>
       <ul>
-        <li><code>rate</code> — tokens added per second (the steady-state limit).</li>
+        <li><code>rps</code> — tokens added per second (the steady-state limit).</li>
         <li><code>burst</code> — bucket capacity (peak traffic accepted instantly).</li>
-        <li><code>key</code> — what gets its own bucket (per-consumer, per-SUPI, per-NF-type, or composite).</li>
+        <li>
+          a key that selects what gets its own bucket — see{' '}
+          <a href="#keys">Choose the right key</a>.
+        </li>
       </ul>
       <p>
         A request consumes one token. If the bucket is empty, the request is denied — 429 on
-        SBI, <code>DIAMETER_TOO_BUSY</code> on Diameter — and the denial lands in the audit
-        trail and the <code>fgp_rate_limit_exceeded_total</code> counter.
+        SBI, <code>DIAMETER_AUTHORIZATION_REJECTED</code> (5003) on Diameter — and the denial
+        increments the <code>fgp_rate_limit_exceeded_total</code> counter and is written to the
+        structured decision log.
       </p>
 
       <h2 id="write-a-rule">Write a rule</h2>
       <p>
-        A per-consumer limit at 100 RPS, burst 200, scoped to UDM traffic:
+        A limit at 100 RPS, burst 200, scoped to traffic from UDM consumers:
       </p>
       <CodeBlock lang="json" code={`{
-  "name": "per-consumer-udm",
-  "rate": 100,
-  "burst": 200,
-  "key": "consumer",
-  "match": {
-    "nf_type": "UDM"
-  },
-  "description": "Cap per-consumer UDM traffic at 100 RPS / 200 burst."
+  "name": "udm-source-cap",
+  "source_nf_type": "UDM",
+  "rps": 100,
+  "burst": 200
 }`} />
 
-      <p>Deploy:</p>
-      <CodeBlock lang="bash" code={`fgpctl rate-limits add @per-consumer-udm.json`} />
+      <p>Deploy it:</p>
+      <CodeBlock lang="bash" code={`fgpctl rate-limits add @udm-source-cap.json`} />
+
+      <p>
+        <code>fgpctl</code> talks to the admin API on <code>http://127.0.0.1:9091</code> by
+        default. See <Link to="/reference/fgpctl">the fgpctl reference</Link> for auth and the
+        base-URL flag.
+      </p>
 
       <h2 id="keys">Choose the right key</h2>
+      <p>
+        <code>source_nf_type</code> scopes which traffic a rule <em>applies to</em> (by source
+        NF type). The bucket dimension — what gets its own counter — is set separately:
+      </p>
       <ul>
         <li>
-          <strong><code>consumer</code></strong> — one bucket per upstream consumer identity
-          (derived from OAuth2 subject, mTLS client cert, or NF discovery context). Use this
-          when you want to protect downstream producers from a runaway consumer.
+          <strong><code>key_by_supi: true</code></strong> — one bucket per subscriber SUPI. Use
+          this so a single misbehaving UE can't drown out other subscribers.
         </li>
         <li>
-          <strong><code>supi</code></strong> — one bucket per subscriber. Use this when a single
-          UE going wild shouldn't drown out other UEs.
+          <strong><code>key</code></strong> — selects an explicit bucket dimension. One of:
+          <code>global</code> (a single cluster-wide bucket),
+          <code>diameter_origin_host</code>, <code>diameter_origin_realm</code>,
+          <code>diameter_app_id</code>, <code>diameter_command_code</code>, or
+          <code>imsi_prefix:N</code> (the first <code>N</code> IMSI digits — e.g.
+          <code>imsi_prefix:6</code> is MCC+MNC).
         </li>
         <li>
-          <strong><code>nf_type</code></strong> — one bucket per target NF type. Use this when
-          you want a hard cap on producer load regardless of which consumer is calling.
-        </li>
-        <li>
-          <strong>Composite keys</strong> — e.g. <code>consumer+supi</code> for "no single
-          consumer can spam any single subscriber". Use sparingly; bucket cardinality multiplies.
+          <strong>neither set</strong> — the legacy default: one bucket per source IP on SBI,
+          per Origin-Host on Diameter.
         </li>
       </ul>
+      <p>
+        An unknown <code>key</code> value is a load-time error, so a typo fails the reload rather
+        than silently passing traffic.
+      </p>
 
       <Callout type="warning" title="Watch bucket cardinality">
         A per-SUPI bucket holds state per active subscriber. Millions of active SUPIs means
-        millions of buckets — memory grows with traffic. The bucket store uses sliding-window
-        sweeping to drop idle buckets, but spikes can pressure memory. Profile in staging
-        before deploying per-SUPI limits at scale.
+        millions of buckets — memory grows with traffic. A background sweep runs every minute and
+        evicts buckets idle for more than five minutes, but spikes can still pressure memory.
+        Profile in staging before deploying <code>key_by_supi</code> limits at scale.
       </Callout>
 
       <h2 id="multiple-limits">Multiple limits on the same traffic</h2>
       <p>
-        Each entry in <code>rate_limits[]</code> becomes a separate filter in the request
-        chain. A request that matches two rules consumes a token from <em>both</em> buckets and
-        is rate-limited by whichever is tighter.
+        Each entry in <code>rate_limits[]</code> becomes a separate filter in the request chain.
+        A request that matches two rules consumes a token from <em>both</em> buckets and is
+        denied by whichever is tighter.
       </p>
       <p>Layered protection looks like:</p>
       <ol>
-        <li>Per-NF-type global cap to protect producers in aggregate.</li>
-        <li>Per-consumer cap to bound any single consumer.</li>
-        <li>Per-SUPI cap for hot-subscriber protection.</li>
+        <li>A <code>global</code> cap to protect producers in aggregate.</li>
+        <li>A per-source-NF-type cap to bound any single consumer class.</li>
+        <li>A <code>key_by_supi</code> cap for hot-subscriber protection.</li>
       </ol>
 
       <h2 id="observe">Observe</h2>
@@ -86,38 +99,35 @@ export default function RateLimiting() {
       <ul>
         <li>
           <code>fgp_rate_limit_exceeded_total{`{rule="…"}`}</code> — counter, ticks every time a
-          bucket denies a request.
+          bucket denies a request, labelled by rule name.
         </li>
         <li>
-          <code>fgp_filter_decisions_total{`{filter="rate-limit", decision="denied"}`}</code> —
-          the same denial seen through the generic filter-decision counter.
+          <code>fgp_filter_decisions_total{`{filter="ratelimit:<rule>", decision="deny"}`}</code> —
+          the same denial seen through the generic filter-decision counter (the filter label is
+          the rule's filter name, <code>ratelimit:</code> plus the rule name).
         </li>
       </ul>
       <p>
-        Alert on <code>rate_limit_exceeded_total</code> rising sharply — that's either a real
-        attack or a legitimate workload outgrowing its cap. Investigate via the audit trail
-        before reflexively raising the limit.
+        Alert on <code>fgp_rate_limit_exceeded_total</code> rising sharply — that's either a real
+        attack or a legitimate workload outgrowing its cap. Each denial is also logged as a
+        structured JSON record carrying <code>request_id</code>, <code>source_nf</code>,
+        <code>target_nf</code>, the bucket <code>key</code>, and the <code>rule</code> name, so
+        you can slice denials by source or subscriber in your log pipeline before reflexively
+        raising the limit.
       </p>
-
-      <h2 id="tune">Tune from audit</h2>
-      <p>
-        The audit record carries the matched rule name and the denial reason. Slice by
-        consumer / SUPI / NF-type to see which key is hitting the cap.
-      </p>
-      <CodeBlock lang="bash" code={`fgpctl audit export --decision denied --limit 1000 \\
-  | jq '[.[] | select(.deny_reason | startswith("rate_limit:"))] | group_by(.consumer) | map({consumer: .[0].consumer, denials: length})'`} />
 
       <h2 id="hot-reload">Hot reload</h2>
       <p>
-        Rate-limit rules hot-reload like every other control-plane mutation. The filter chain
-        rebuilds, the new bucket set takes effect on the next request, and in-flight buckets
-        either carry over (same name + key) or are reset (renamed or changed key).
+        Rate-limit rules hot-reload like every other control-plane mutation — the filter chain
+        rebuilds and the new bucket set takes effect on the next request. See{' '}
+        <Link to="/guides/hot-reload-and-runtime-ops">Hot reload and runtime ops</Link> for the
+        reload guarantee and how in-flight buckets carry over or reset.
       </p>
 
-      <h2 id="related">Related</h2>
+      <h2 id="related">Where to go next</h2>
       <ul>
         <li><Link to="/concepts/request-pipeline">Request pipeline</Link> — where rate limits sit in the chain.</li>
-        <li><Link to="/reference/policy-schema">Policy schema</Link> — rate-limit rule fields.</li>
+        <li><Link to="/reference/config-schema">Config schema</Link> — the full RateLimitRule fields.</li>
         <li><Link to="/api/rate-limits">Admin API → Rate limits</Link>.</li>
       </ul>
     </DocPage>

@@ -84,8 +84,10 @@ export default function ConfigSchema() {
       </table>
 
       <Callout type="note" title="Duration format">
-        YAML accepts Go duration strings (<code>10s</code>, <code>250ms</code>). JSON requires
-        nanoseconds as an integer (<code>10000000000</code> for 10s).
+        Every <code>duration</code> field below — across <code>server</code>, <code>diameter</code>,
+        <code>process</code>, <code>admin</code>, and the rest — uses the same encoding. YAML accepts
+        Go duration strings (<code>10s</code>, <code>250ms</code>). JSON requires nanoseconds as an
+        integer (<code>10000000000</code> for 10s).
       </Callout>
 
       <h2 id="process">process</h2>
@@ -94,9 +96,6 @@ export default function ConfigSchema() {
         <tbody>
           <tr><td><code>shutdown_timeout</code></td><td>duration</td><td><code>15s</code></td><td>Graceful-shutdown bound.</td></tr>
           <tr><td><code>store_watch_interval</code></td><td>duration</td><td><code>5s</code></td><td>Control-plane store poll cadence.</td></tr>
-          <tr><td><code>audit_queue.queue_size</code></td><td>int</td><td><code>256</code></td><td>Audit pipeline buffer size.</td></tr>
-          <tr><td><code>audit_queue.workers</code></td><td>int</td><td><code>4</code></td><td>Audit pipeline workers.</td></tr>
-          <tr><td><code>audit_queue.drain_timeout</code></td><td>duration</td><td><code>10s</code></td><td>Shutdown drain bound for the audit pipeline.</td></tr>
         </tbody>
       </table>
 
@@ -105,8 +104,6 @@ export default function ConfigSchema() {
       <table>
         <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>audit.driver</code></td><td>string</td><td><code>memory</code></td><td><code>memory</code>, <code>sqlite</code>, <code>postgres</code>.</td></tr>
-          <tr><td><code>audit.dsn</code></td><td>string</td><td>—</td><td>Connection string. <code>dsn_file:</code> sibling reads from a file.</td></tr>
           <tr><td><code>control_plane_db.driver</code></td><td>string</td><td><code>sqlite</code></td><td><code>sqlite</code> or <code>postgres</code>.</td></tr>
           <tr><td><code>control_plane_db.dsn</code></td><td>string</td><td>in-memory shared-cache sqlite</td><td>Connection string.</td></tr>
         </tbody>
@@ -117,13 +114,15 @@ export default function ConfigSchema() {
       <table>
         <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>listen</code></td><td>string</td><td><code>127.0.0.1:8091</code></td><td>Listen address.</td></tr>
+          <tr><td><code>listen</code></td><td>string</td><td>—</td><td>Listen address. No built-in default; an empty value leaves the admin API down. Set <code>:9091</code> to match the port fgpctl targets by default.</td></tr>
           <tr><td><code>default_action</code></td><td>string</td><td><code>deny</code></td><td><code>allow</code> or <code>deny</code>. Seeded into the policy store on first run.</td></tr>
-          <tr><td><code>allow_anonymous</code></td><td>bool</td><td><code>false</code></td><td>Must be true if <code>auth</code> is empty, otherwise FGP refuses to start.</td></tr>
+          <tr><td><code>allow_anonymous</code></td><td>bool</td><td><code>false</code></td><td>Must be true if <code>auth</code> is empty, otherwise the proxy refuses to start.</td></tr>
           <tr><td><code>allow_insecure</code></td><td>bool</td><td><code>false</code></td><td>Opt into cleartext h2c. Production should use TLS.</td></tr>
+          <tr><td><code>auth.users[]</code></td><td>list</td><td>—</td><td>Operator roster for the <code>POST /admin/login</code> form. Each entry: <code>username</code>, <code>password_hash</code> (bcrypt), <code>role</code> (<code>admin</code>/<code>operator</code>/<code>viewer</code>). Empty disables the login endpoint.</td></tr>
+          <tr><td><code>auth.login_token_ttl</code></td><td>duration</td><td><code>24h</code></td><td>Validity window of a JWT issued by <code>/admin/login</code>.</td></tr>
           <tr><td><code>auth.api_key</code></td><td>string</td><td>—</td><td>Legacy single key. Prefer <code>api_key_file</code>.</td></tr>
           <tr><td><code>auth.api_key_file</code></td><td>string</td><td>—</td><td>Path to a file holding the API key.</td></tr>
-          <tr><td><code>auth.jwt_secret</code></td><td>string</td><td>—</td><td>HMAC secret. Prefer <code>jwt_secret_file</code>.</td></tr>
+          <tr><td><code>auth.jwt_secret</code></td><td>string</td><td>—</td><td>HMAC secret used to validate (and, for the login form, issue) JWTs. Prefer <code>jwt_secret_file</code>.</td></tr>
           <tr><td><code>auth.jwt_secret_file</code></td><td>string</td><td>—</td><td>Path to a file holding the HMAC secret.</td></tr>
           <tr><td><code>auth.jwt_public_key</code></td><td>string</td><td>—</td><td>Path to RSA/ECDSA public key for JWT verification.</td></tr>
           <tr><td><code>tls</code></td><td>object</td><td>—</td><td>TLS material. Configuring this lets you drop <code>allow_insecure</code>.</td></tr>
@@ -174,30 +173,6 @@ export default function ConfigSchema() {
         </tbody>
       </table>
 
-      <h2 id="audit">audit</h2>
-      <p>See <Link to="/guides/audit-and-compliance">Audit and compliance</Link>.</p>
-      <table>
-        <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><code>export.webhook_url</code></td><td>string</td><td>—</td><td>HTTPS endpoint to POST batches to.</td></tr>
-          <tr><td><code>export.webhook_timeout</code></td><td>duration</td><td><code>5s</code></td><td>Per-batch request timeout.</td></tr>
-          <tr><td><code>export.webhook_token</code> / <code>_file</code></td><td>string</td><td>—</td><td>Bearer token.</td></tr>
-          <tr><td><code>export.webhook_api_key</code> / <code>_file</code></td><td>string</td><td>—</td><td>API key for sinks that use one.</td></tr>
-          <tr><td><code>export.syslog_addr</code></td><td>string</td><td>—</td><td>Syslog over TCP/TLS or UDP.</td></tr>
-          <tr><td><code>export.file_path</code></td><td>string</td><td>—</td><td>Local JSONL sink.</td></tr>
-          <tr><td><code>export.file_max_size_mb</code></td><td>int</td><td><code>100</code></td><td>Rotation size.</td></tr>
-          <tr><td><code>export.file_max_files</code></td><td>int</td><td><code>5</code></td><td>How many rotated files to keep.</td></tr>
-          <tr><td><code>export.filter_decision</code></td><td>string</td><td>—</td><td>Only export records with this decision (e.g. <code>denied</code>).</td></tr>
-          <tr><td><code>export.batch_size</code></td><td>int</td><td><code>100</code></td><td>Records per batch.</td></tr>
-          <tr><td><code>export.batch_timeout</code></td><td>duration</td><td><code>5s</code></td><td>Max wait before flushing a partial batch.</td></tr>
-          <tr><td><code>export.max_retries</code></td><td>int</td><td><code>3</code></td><td>Per-batch retries before drop.</td></tr>
-          <tr><td><code>signing_key_file</code></td><td>string</td><td>—</td><td>HMAC key path. Presence enables signing.</td></tr>
-          <tr><td><code>retention.max_age</code></td><td>duration</td><td><code>0s</code></td><td>Delete records older than this. 0 disables.</td></tr>
-          <tr><td><code>retention.max_records</code></td><td>int</td><td><code>0</code></td><td>Keep at most N records. 0 = unlimited.</td></tr>
-          <tr><td><code>retention.cleanup_interval</code></td><td>duration</td><td><code>1h</code></td><td>How often the cleanup goroutine runs.</td></tr>
-        </tbody>
-      </table>
-
       <h2 id="defaults">defaults</h2>
       <table>
         <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
@@ -237,6 +212,19 @@ export default function ConfigSchema() {
       <CodeBlock lang="yaml" code={`version: "v1"
 server:
   listen: ":8090"
+admin:
+  listen: ":9091"
+  allow_insecure: true   # cleartext h2c — local development only
+  auth:
+    jwt_secret: "change-me-to-a-long-random-string"
+    login_token_ttl: 24h
+    users:
+      # admin / admin (bcrypt cost 10)
+      - username: admin
+        password_hash: "$2b$10$Wxe3nshQr6uCBcZT.S3up.aLMqBZF4cLgLoGv.8Noa9Pk.JL/PBB6"
+        role: admin
+web:
+  enabled: true
 observability:
   logging:
     level: info

@@ -6,31 +6,32 @@ export default function NrfAndProducers() {
   return (
     <DocPage
       slug="concepts/nrf-and-producers"
-      lede="On the SBI side, FGP integrates with the NRF in two roles: it registers a shadow NF profile for itself so consumers discover the proxy, and it discovers downstream producers so requests can be routed dynamically. The producer pool can also be populated from static config."
+      lede="On the SBI side, fluxgate-proxy integrates with the NRF in two roles: it registers a shadow NF profile for itself so consumers discover the proxy, and it discovers downstream producers so requests can be routed dynamically. The producer pool can also be populated from static config."
     >
       <h2 id="two-roles">Two NRF roles</h2>
-      <p>FGP plays two roles with respect to the NRF:</p>
+      <p>fluxgate-proxy plays two roles with respect to the NRF:</p>
       <ul>
         <li>
-          <strong>Registrar.</strong> At startup, FGP registers one or more shadow NF profiles
-          with the configured NRF — for example a UDM profile that lists the proxy's listen
-          address. Consumers that discover UDM through the NRF see the proxy as a UDM instance
-          and send their requests to it. FGP heartbeats the profile at a configurable cadence.
+          <strong>Registration.</strong> At startup, the proxy registers one or more shadow NF
+          profiles with the configured NRF — for example a UDM profile that lists the proxy's
+          listen address. Consumers that discover UDM through the NRF see the proxy as a UDM
+          instance and send their requests to it. The proxy heartbeats the profile at a
+          configurable cadence.
         </li>
         <li>
-          <strong>Discoverer.</strong> FGP queries the NRF for available producers (by NF type
-          and selection criteria), populates a producer pool, and selects from that pool when
-          routing.
+          <strong>Discovery.</strong> The proxy queries the NRF for available producers (by NF
+          type and selection criteria), populates a producer pool, and selects from that pool
+          when routing.
         </li>
       </ul>
 
       <h2 id="shadow-profiles">Shadow NF profiles</h2>
       <p>
-        A shadow profile is just an NRF profile FGP registers on its own behalf. The profile
-        advertises:
+        A shadow profile is just an NRF profile the proxy registers on its own behalf. The
+        profile advertises:
       </p>
       <ul>
-        <li>The NF type FGP impersonates (UDM, AUSF, PCF, UDR, SMF, AMF, NSSF, …).</li>
+        <li>The NF type the proxy impersonates (UDM, AUSF, PCF, UDR, SMF, AMF, NSSF, …).</li>
         <li>The proxy's listen address(es) and supported services.</li>
         <li>PLMN and S-NSSAI scope.</li>
         <li>Priority and capacity hints used by consumers for selection.</li>
@@ -41,16 +42,17 @@ export default function NrfAndProducers() {
         list.
       </p>
 
-      <Callout type="note" title="Profile registrar reloads on restart only">
-        Changes under <code>/admin/nrf-profiles</code> persist immediately, but the registrar
-        component takes its snapshot of profiles at startup. To re-register with new or edited
-        profiles, restart the proxy. Other control-plane changes (policy, rate limits,
-        transforms, routes, producer pool) are fully hot-reloadable.
+      <Callout type="note" title="NRF profile changes re-register live">
+        Changes under <code>/admin/nrf-profiles</code> persist immediately and re-register with
+        the NRF without a restart: each create, update, or delete triggers the NRF registration
+        component to deregister and re-register the full profile set against the NRF. The same
+        hot-reload guarantee applies to other control-plane changes (policy, rate-limit,
+        transformation, and routing rules, and the producer pool).
       </Callout>
 
       <h2 id="discovery">Producer discovery</h2>
       <p>
-        When <code>nrf.discover_producers: true</code>, FGP periodically issues NF-Discovery
+        When <code>nrf.discover_producers: true</code>, the proxy periodically issues NF-Discovery
         requests to the NRF for each producer NF type it needs. Discovered instances populate
         the producer pool with their advertised addresses, priorities, and capacities.
       </p>
@@ -80,12 +82,11 @@ export default function NrfAndProducers() {
       <p>The admin API exposes runtime knobs on the pool:</p>
       <ul>
         <li>
-          <strong>Drain</strong> — <code>POST /admin/peers/sbi/{`{nf_type}`}/drain</code>. The
-          producer stops receiving new requests; in-flight requests complete.
-        </li>
-        <li>
-          <strong>Restore</strong> — <code>POST /admin/peers/sbi/{`{nf_type}`}/restore</code>.
-          The producer returns to the pool.
+          <strong>Drain / restore</strong> — <code>PATCH /admin/peers/sbi/{`{nf_type}`}</code>{' '}
+          with a JSON body of <code>{`{address, state}`}</code>, where <code>state</code> is{' '}
+          <code>drained</code> or <code>active</code>. A drained producer stops receiving new
+          requests while in-flight requests complete; setting it back to <code>active</code>{' '}
+          returns it to the pool. PATCH to the same state is idempotent.
         </li>
         <li>
           <strong>Weight</strong> — <code>PUT /admin/peers/sbi/{`{nf_type}`}/weight</code>.
@@ -97,8 +98,8 @@ export default function NrfAndProducers() {
         </li>
       </ul>
       <p>
-        All four are hot-reloadable: no restart, decisions take effect on the next request. See
-        <Link to="/api/producers-and-profiles">Admin API → Producers and profiles</Link>.
+        These knobs are hot-reloadable: no restart, decisions take effect on the next request.
+        See <Link to="/api/producers-and-profiles">Admin API → Producers and profiles</Link>.
       </p>
 
       <h2 id="health">Deep health</h2>

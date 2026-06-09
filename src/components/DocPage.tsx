@@ -68,8 +68,9 @@ export default function DocPage({ slug, lede, bare, children }: DocPageProps) {
     <>
       <main className="min-w-0 flex-1 px-6 py-10 lg:px-10">
         <article
+          key={location.pathname}
           ref={articleRef}
-          className="prose prose-slate mx-auto max-w-3xl dark:prose-invert prose-headings:scroll-mt-20 prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0 prose-code:before:hidden prose-code:after:hidden"
+          className="doc-content prose prose-slate mx-auto max-w-3xl dark:prose-invert prose-headings:scroll-mt-20 prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0 prose-code:before:hidden prose-code:after:hidden"
         >
           {!bare && page && (
             <>

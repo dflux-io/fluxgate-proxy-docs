@@ -1,5 +1,5 @@
 import {
-  BookOpen,
+  Rocket,
   Lightbulb,
   GraduationCap,
   Wrench,
@@ -23,21 +23,22 @@ interface SectionMeta {
 }
 
 const sections: Record<string, SectionMeta> = {
-  Introduction: { Icon: BookOpen },
-  Concepts:     { Icon: Lightbulb },
-  Tutorials:    { Icon: GraduationCap },
-  Guides:       { Icon: Wrench },
-  Reference:    { Icon: Library },
-  API:          { Icon: Plug },
-  Glossary:     { Icon: Book },
+  'Get started':   { Icon: Rocket },
+  Concepts:        { Icon: Lightbulb },
+  Tutorials:       { Icon: GraduationCap },
+  'How-to guides': { Icon: Wrench },
+  Reference:       { Icon: Library },
+  'Admin API':     { Icon: Plug },
+  Glossary:        { Icon: Book },
 };
 
 const groups: ManifestGroup[] = [
   {
-    title: 'Introduction',
+    title: 'Get started',
     pages: [
-      { slug: 'introduction', title: 'Introduction', group: 'Introduction' },
-      { slug: 'introduction/quickstart', title: 'Quickstart', group: 'Introduction' },
+      { slug: 'introduction', title: 'Overview', group: 'Get started' },
+      { slug: 'introduction/why', title: 'Why fluxgate-proxy', group: 'Get started' },
+      { slug: 'introduction/quickstart', title: 'Quickstart', group: 'Get started' },
     ],
   },
   {
@@ -61,16 +62,16 @@ const groups: ManifestGroup[] = [
     ],
   },
   {
-    title: 'Guides',
+    title: 'How-to guides',
     pages: [
-      { slug: 'guides/deploying', title: 'Deploying FGP', group: 'Guides' },
-      { slug: 'guides/securing-the-admin-api', title: 'Securing the admin API', group: 'Guides' },
-      { slug: 'guides/policy-versioning', title: 'Policy versioning and rollback', group: 'Guides' },
-      { slug: 'guides/rate-limiting', title: 'Rate limiting', group: 'Guides' },
-      { slug: 'guides/audit-and-compliance', title: 'Audit and compliance', group: 'Guides' },
-      { slug: 'guides/observability', title: 'Observability', group: 'Guides' },
-      { slug: 'guides/using-postgres', title: 'Using PostgreSQL', group: 'Guides' },
-      { slug: 'guides/hot-reload-and-runtime-ops', title: 'Hot reload and runtime ops', group: 'Guides' },
+      { slug: 'guides/deploying', title: 'Deploying fluxgate-proxy', group: 'How-to guides' },
+      { slug: 'guides/using-postgres', title: 'Using PostgreSQL', group: 'How-to guides' },
+      { slug: 'guides/securing-the-admin-api', title: 'Securing the admin API', group: 'How-to guides' },
+      { slug: 'guides/rate-limiting', title: 'Configuring rate limiting', group: 'How-to guides' },
+      { slug: 'guides/policy-versioning', title: 'Versioning and rolling back policy', group: 'How-to guides' },
+      { slug: 'guides/observability', title: 'Setting up observability', group: 'How-to guides' },
+      { slug: 'guides/audit-and-compliance', title: 'Auditing and compliance reporting', group: 'How-to guides' },
+      { slug: 'guides/hot-reload-and-runtime-ops', title: 'Hot reload and runtime ops', group: 'How-to guides' },
     ],
   },
   {
@@ -86,16 +87,16 @@ const groups: ManifestGroup[] = [
     ],
   },
   {
-    title: 'API',
+    title: 'Admin API',
     pages: [
-      { slug: 'api/overview', title: 'Overview', group: 'API' },
-      { slug: 'api/status-and-config', title: 'Status and config', group: 'API' },
-      { slug: 'api/policy', title: 'Policy', group: 'API' },
-      { slug: 'api/rate-limits', title: 'Rate limits', group: 'API' },
-      { slug: 'api/transformations', title: 'Transformations', group: 'API' },
-      { slug: 'api/routing', title: 'Routing', group: 'API' },
-      { slug: 'api/producers-and-profiles', title: 'Producers and profiles', group: 'API' },
-      { slug: 'api/observability', title: 'Observability', group: 'API' },
+      { slug: 'api/overview', title: 'Overview', group: 'Admin API' },
+      { slug: 'api/status-and-config', title: 'Status and config', group: 'Admin API' },
+      { slug: 'api/policy', title: 'Policy', group: 'Admin API' },
+      { slug: 'api/rate-limits', title: 'Rate limits', group: 'Admin API' },
+      { slug: 'api/transformations', title: 'Transformations', group: 'Admin API' },
+      { slug: 'api/routing', title: 'Routing', group: 'Admin API' },
+      { slug: 'api/producers-and-profiles', title: 'Producers and profiles', group: 'Admin API' },
+      { slug: 'api/observability', title: 'Observability', group: 'Admin API' },
     ],
   },
   {
@@ -133,5 +134,5 @@ export function neighbors(slug: string): { prev?: ManifestPage; next?: ManifestP
 }
 
 export function sectionMeta(group: string): SectionMeta {
-  return sections[group] ?? { Icon: BookOpen };
+  return sections[group] ?? { Icon: Book };
 }

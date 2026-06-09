@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import { Info, Lightbulb, AlertTriangle, AlertOctagon, type LucideIcon } from 'lucide-react';
 
-type CalloutType = 'note' | 'tip' | 'warning';
+type CalloutType = 'note' | 'tip' | 'warning' | 'danger';
 
 interface CalloutProps {
   type?: CalloutType;
@@ -8,32 +9,51 @@ interface CalloutProps {
   children: ReactNode;
 }
 
-const styles: Record<CalloutType, { ring: string; label: string; tone: string }> = {
+const styles: Record<CalloutType, { rail: string; bg: string; ring: string; tone: string; label: string; Icon: LucideIcon }> = {
   note: {
-    ring: 'border-blue-500/30 bg-blue-500/5',
+    rail: 'border-l-blue-500',
+    bg: 'bg-blue-500/[0.06]',
+    ring: 'border-blue-500/25',
+    tone: 'text-blue-500 dark:text-blue-400',
     label: 'Note',
-    tone: 'text-blue-400',
+    Icon: Info,
   },
   tip: {
-    ring: 'border-emerald-500/30 bg-emerald-500/5',
+    rail: 'border-l-emerald-500',
+    bg: 'bg-emerald-500/[0.06]',
+    ring: 'border-emerald-500/25',
+    tone: 'text-emerald-600 dark:text-emerald-400',
     label: 'Tip',
-    tone: 'text-emerald-400',
+    Icon: Lightbulb,
   },
   warning: {
-    ring: 'border-amber-500/30 bg-amber-500/5',
+    rail: 'border-l-amber-500',
+    bg: 'bg-amber-500/[0.06]',
+    ring: 'border-amber-500/25',
+    tone: 'text-amber-600 dark:text-amber-400',
     label: 'Warning',
-    tone: 'text-amber-400',
+    Icon: AlertTriangle,
+  },
+  danger: {
+    rail: 'border-l-rose-500',
+    bg: 'bg-rose-500/[0.06]',
+    ring: 'border-rose-500/25',
+    tone: 'text-rose-600 dark:text-rose-400',
+    label: 'Danger',
+    Icon: AlertOctagon,
   },
 };
 
 export default function Callout({ type = 'note', title, children }: CalloutProps) {
   const s = styles[type];
+  const { Icon } = s;
   return (
-    <div className={`not-prose my-6 rounded-xl border ${s.ring} px-4 py-3 panel-glow`}>
-      <div className={`mb-1 text-xs font-semibold uppercase tracking-wider ${s.tone}`}>
-        {title ?? s.label}
+    <div className={`not-prose my-6 flex gap-3 rounded-lg border border-l-2 ${s.ring} ${s.rail} ${s.bg} px-4 py-3`}>
+      <Icon size={16} strokeWidth={2} className={`mt-0.5 shrink-0 ${s.tone}`} aria-hidden />
+      <div className="min-w-0">
+        <div className={`mb-1 text-xs font-semibold uppercase tracking-wider ${s.tone}`}>{title ?? s.label}</div>
+        <div className="text-sm leading-relaxed text-ink [&_a]:text-accent [&_a:hover]:underline [&>*+*]:mt-2">{children}</div>
       </div>
-      <div className="text-sm leading-relaxed text-ink">{children}</div>
     </div>
   );
 }

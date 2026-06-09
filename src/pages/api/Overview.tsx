@@ -7,14 +7,14 @@ export default function Overview() {
   return (
     <DocPage
       slug="api/overview"
-      lede="The admin API is FGP's HTTP control plane. fgpctl is a thin client over it, and you can drive it from curl or any HTTP client. This page covers auth, base URL, content types, error model, idempotency, and the dry-run pattern."
+      lede="The admin API is the HTTP control surface for fluxgate-proxy. fgpctl is a thin client over it, and you can drive it from curl or any HTTP client. This page covers auth, base URL, content types, error model, idempotency, and the dry-run pattern."
     >
       <h2 id="base-url">Base URL</h2>
       <p>
-        The admin listener defaults to <code>127.0.0.1:8091</code>. Everywhere in this section
+        The admin listener defaults to <code>127.0.0.1:9091</code>. Everywhere in this section
         we use a placeholder host:
       </p>
-      <CodeBlock lang="text" code={`https://fgp.svc:8091`} />
+      <CodeBlock lang="text" code={`https://fgp.svc:9091`} />
 
       <p>
         Production should expose the admin listener over HTTPS with TLS configured under
@@ -22,27 +22,38 @@ export default function Overview() {
       </p>
 
       <h2 id="auth">Authentication</h2>
-      <p>FGP supports three auth modes on the admin API:</p>
+      <p>
+        This page is the canonical home for admin API authentication; other <code>/api/*</code>{' '}
+        pages link here. The admin API accepts two credential types, configured under{' '}
+        <code>admin.auth</code>:
+      </p>
       <ul>
         <li>
           <strong>API key</strong> — pass in the <code>X-Admin-Key</code> header.
-          <CodeBlock lang="bash" code={`curl -H "X-Admin-Key: $FGP_ADMIN_KEY" https://fgp.svc:8091/admin/status`} />
+          <CodeBlock lang="bash" code={`curl -H "X-Admin-Key: $FGP_ADMIN_KEY" https://fgp.svc:9091/admin/status`} />
         </li>
         <li>
           <strong>JWT bearer</strong> — pass in the <code>Authorization: Bearer …</code> header.
-          FGP validates signature, expiry, and the <code>fgp:admin</code> scope claim.
+          The proxy validates the signature and expiry, then maps the token's{' '}
+          <code>role</code> claim to an admin role for role-based access control.
         </li>
-        <li><strong>mTLS</strong> — client certificate, identity recorded in the admin audit log.</li>
       </ul>
       <p>
-        Configure one or more under <code>admin.auth</code>. When none is configured, FGP
-        refuses to start unless <code>admin.allow_anonymous: true</code> is also set.
+        Each request tries the bearer token first, then falls back to the API key. When
+        neither <code>admin.auth</code> credentials nor <code>admin.allow_anonymous: true</code>{' '}
+        is configured, the proxy refuses to start.
+      </p>
+      <p>
+        On top of credentials, you can require a client certificate at the transport layer
+        with <code>admin.require_client_cert: true</code> (which needs{' '}
+        <code>admin.tls.ca_file</code>). This is transport hardening, not a third credential
+        type — see <Link to="/guides/securing-the-admin-api">Securing the admin API</Link>.
       </p>
 
       <h2 id="content-types">Content types</h2>
       <ul>
         <li>Requests with a body: <code>Content-Type: application/json</code>.</li>
-        <li>Responses are <code>application/json</code> unless documented otherwise (e.g. CSV from audit export).</li>
+        <li>Responses are <code>application/json</code> unless documented otherwise (e.g. the Prometheus exposition format from <code>/metrics</code>).</li>
         <li>UTF-8 throughout.</li>
       </ul>
 
@@ -51,9 +62,9 @@ export default function Overview() {
       <CodeBlock lang="json" code={`{
   "error": {
     "code": "validation_failed",
-    "message": "rules[0].match.method: invalid HTTP method 'POSST'",
+    "message": "rules[0].methods: invalid HTTP method 'POSST'",
     "details": [
-      {"path": "rules[0].match.method", "issue": "must be one of GET, POST, PUT, …"}
+      {"path": "rules[0].methods", "issue": "must be one of GET, POST, PUT, …"}
     ]
   }
 }`} />
@@ -67,9 +78,9 @@ export default function Overview() {
         <li><strong>401</strong> — missing or invalid auth.</li>
         <li><strong>403</strong> — auth succeeded but the actor isn't authorized for the action (e.g. JWT lacks the required scope).</li>
         <li><strong>404</strong> — resource by that name doesn't exist.</li>
-        <li><strong>409</strong> — conflict (e.g. creating a tenant for a PLMN that already has one).</li>
-        <li><strong>422</strong> — semantically valid request that violates a constraint (e.g. rolling back to a nonexistent version).</li>
-        <li><strong>500</strong> — internal error. Check the FGP logs.</li>
+        <li><strong>409</strong> — conflict (e.g. creating a rule whose name already exists).</li>
+        <li><strong>422</strong> — semantically valid request that violates a constraint (e.g. restoring a nonexistent policy snapshot).</li>
+        <li><strong>500</strong> — internal error. Check the proxy logs.</li>
       </ul>
 
       <h2 id="idempotency">Idempotency</h2>
@@ -89,7 +100,6 @@ export default function Overview() {
       </p>
       <ul>
         <li><code>POST /admin/config/validate</code> — validate a config file.</li>
-        <li><code>POST /admin/policy/validate</code> — validate a policy document.</li>
         <li>Transformation rules support a dry-run that takes a candidate rule + sample request and shows the transformed request.</li>
       </ul>
       <p>Use these in CI before deploying.</p>
@@ -109,30 +119,23 @@ export default function Overview() {
         for what is and isn't hot-reloadable.
       </p>
 
-      <h2 id="admin-audit">Every mutation is audited</h2>
+      <h2 id="decision-logs">Mutations and decisions are logged</h2>
       <p>
-        Every <code>POST</code>, <code>PUT</code>, and <code>DELETE</code> on the admin API
-        lands in the admin audit log at <code>GET /admin/audit/admin-actions</code>. Records
-        carry the actor identity (from API key, JWT, or mTLS), endpoint, path params, request
-        id, and result. Forward to your SIEM for operator forensics.
-      </p>
-
-      <h2 id="rate-limits">Admin-side rate limits</h2>
-      <p>
-        The admin listener has its own rate limit, separate from data-plane rate limits, to
-        guard against runaway scripts. Limits are conservative — single-digit RPS per token —
-        and configurable under <code>admin.auth</code>.
+        Admin mutations and data-path decisions are emitted as structured JSON logs (zerolog),
+        not stored in a queryable audit endpoint — there is no admin audit API. Ship those logs
+        to your log pipeline or SIEM for operator forensics, and pair them with Prometheus
+        metrics. See <Link to="/api/observability">Observability</Link>.
       </p>
 
       <h2 id="endpoints">Endpoint groups</h2>
       <ul>
-        <li><Link to="/api/status-and-config">Status and config</Link> — health, config dump, log level, compliance report.</li>
-        <li><Link to="/api/policy">Policy</Link> — full doc, versions, diff, rollback, per-rule CRUD.</li>
+        <li><Link to="/api/status-and-config">Status and config</Link> — health, config dump, log level.</li>
+        <li><Link to="/api/policy">Policy</Link> — read-only policy doc, snapshots (create/restore), per-rule CRUD.</li>
         <li><Link to="/api/rate-limits">Rate limits</Link> — CRUD.</li>
         <li><Link to="/api/transformations">Transformations</Link> — CRUD + dry-run.</li>
         <li><Link to="/api/routing">Routing</Link> — CRUD.</li>
         <li><Link to="/api/producers-and-profiles">Producers and profiles</Link> — producer configs, NRF profiles, SBI peer ops, Diameter peers and stats.</li>
-        <li><Link to="/api/observability">Observability</Link> — deep health, validate, metrics summary, audit.</li>
+        <li><Link to="/api/observability">Observability</Link> — deep health, metrics summary.</li>
       </ul>
     </DocPage>
   );

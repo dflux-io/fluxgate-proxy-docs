@@ -8,7 +8,7 @@ export default function Index() {
   const sections: { to: string; group: string; title: string; description: string }[] = [
     {
       to: '/introduction',
-      group: 'Introduction',
+      group: 'Get started',
       title: 'Start here',
       description: 'What fluxgate-proxy is, where it sits in your signaling plane, and when to pick it.',
     },
@@ -26,9 +26,9 @@ export default function Index() {
     },
     {
       to: '/guides/deploying',
-      group: 'Guides',
+      group: 'How-to guides',
       title: 'How-tos',
-      description: 'Day-two operations: deploying, securing the admin API, audit, metrics, Postgres, hot reload.',
+      description: 'Day-two operations: deploying, securing the admin API, observability, Postgres, hot reload.',
     },
     {
       to: '/reference/config-schema',
@@ -38,9 +38,9 @@ export default function Index() {
     },
     {
       to: '/api/overview',
-      group: 'API',
+      group: 'Admin API',
       title: 'Admin API',
-      description: 'The admin HTTP surface: policy, rate limits, transforms, routing, peers, audit, health.',
+      description: 'The admin HTTP surface: policy, rate limits, transforms, routing, producers, peers, health.',
     },
   ];
 
@@ -57,7 +57,7 @@ export default function Index() {
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-muted">
           One Go binary that sits between NF consumers and producers, applying authentication,
-          policy, rate limiting, transformation, content-based routing, and audit — across both
+          policy, rate limiting, transformation, and content-based routing — across both
           HTTP/2 SBI and Diameter — at wire speed.
         </p>
         <div className="mt-5 flex flex-wrap gap-2 text-sm">
